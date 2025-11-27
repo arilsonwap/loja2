@@ -1,0 +1,98 @@
+export const ofertas = [
+  {
+    id: "1",
+    nome: "Fone Bluetooth Esportivo",
+    preco: 29.9,
+    precoOriginal: 49.9,
+    imagem: "https://i.postimg.cc/3JpwKBfN/63efcfa7cb7c09f742837580d07a8a0c.jpg",
+    categoria: "fones",
+    imagens: [
+      "https://i.postimg.cc/3JpwKBfN/63efcfa7cb7c09f742837580d07a8a0c.jpg",
+      "https://i.postimg.cc/3JpwKBfN/63efcfa7cb7c09f742837580d07a8a0c.jpg",
+    ],
+  },
+  {
+    id: "2",
+    nome: "Caixa de Som Portátil",
+    preco: 49.9,
+    precoOriginal: 79.9,
+    imagem: "https://i.postimg.cc/XJR0mMbx/10130963-800-800.webp",
+    categoria: "caixas",
+    imagens: [
+      "https://i.postimg.cc/XJR0mMbx/10130963-800-800.webp",
+      "https://i.postimg.cc/XJR0mMbx/10130963-800-800.webp",
+    ],
+  },
+  {
+    id: "3",
+    nome: "Cabo USB V8 Reforçado",
+    preco: 19.9,
+    precoOriginal: 29.9,
+    imagem: "https://i.postimg.cc/HkY1f4qD/cabo-v8-micro-usb-fast-1-5m-reforcado-preto-725-1-17e1d0a08ceb9404096e1bac456aa631.webp",
+    categoria: "cabos",
+    imagens: [
+      "https://i.postimg.cc/HkY1f4qD/cabo-v8-micro-usb-fast-1-5m-reforcado-preto-725-1-17e1d0a08ceb9404096e1bac456aa631.webp",
+      "https://i.postimg.cc/HkY1f4qD/cabo-v8-micro-usb-fast-1-5m-reforcado-preto-725-1-17e1d0a08ceb9404096e1bac456aa631.webp",
+    ],
+  },
+  {
+    id: "4",
+    nome: "Carregador Turbo 20W",
+    preco: 79.9,
+    precoOriginal: 119.9,
+    imagem: "https://i.postimg.cc/fL0GxHd4/413II6Kruy-L.jpg",
+    categoria: "acessorios",
+    imagens: [
+      "https://i.postimg.cc/fL0GxHd4/413II6Kruy-L.jpg",
+      "https://i.postimg.cc/fL0GxHd4/413II6Kruy-L.jpg",
+    ],
+  },
+  {
+    id: "5",
+    nome: "Suporte Veicular Magnético",
+    preco: 24.9,
+    precoOriginal: 39.9,
+    imagem: "https://i.postimg.cc/y8BHvbgG/suporte-veicular-magnetico-saida-ar-condicionado-tomate-preto-0022496-600.jpg",
+    categoria: "acessorios",
+    imagens: [
+      "https://i.postimg.cc/y8BHvbgG/suporte-veicular-magnetico-saida-ar-condicionado-tomate-preto-0022496-600.jpg",
+      "https://i.postimg.cc/y8BHvbgG/suporte-veicular-magnetico-saida-ar-condicionado-tomate-preto-0022496-600.jpg",
+    ],
+  },
+  {
+    id: "6",
+    nome: "Cabo USB Tipo-C Rápido",
+    preco: 18.9,
+    precoOriginal: 27.9,
+    imagem: "https://i.postimg.cc/GtkfDbQb/66cc0e7e76.webp",
+    categoria: "cabos",
+    imagens: [
+      "https://i.postimg.cc/GtkfDbQb/66cc0e7e76.webp",
+      "https://i.postimg.cc/GtkfDbQb/66cc0e7e76.webp",
+    ],
+  },
+  {
+    id: "7",
+    nome: "Fone Over-Ear Confort",
+    preco: 59.9,
+    precoOriginal: 99.9,
+    imagem: "https://i.postimg.cc/qvZ1ztTm/Fones-de-Ouvido-Bose-Quiet-Comfort-Ultra-Bluetooth-com-Cancelamento-de-Ruido-Over-Ear-com-Conforto-S.webp",
+    categoria: "fones",
+    imagens: [
+      "https://i.postimg.cc/qvZ1ztTm/Fones-de-Ouvido-Bose-Quiet-Comfort-Ultra-Bluetooth-com-Cancelamento-de-Ruido-Over-Ear-com-Conforto-S.webp",
+      "https://i.postimg.cc/qvZ1ztTm/Fones-de-Ouvido-Bose-Quiet-Comfort-Ultra-Bluetooth-com-Cancelamento-de-Ruido-Over-Ear-com-Conforto-S.webp",
+    ],
+  },
+  {
+    id: "8",
+    nome: "Caixa de Som RGB Portátil",
+    preco: 89.9,
+    precoOriginal: 149.9,
+    imagem: "https://i.postimg.cc/QCXQ6sDX/D-NQ-NP-663326-MLA96078376099-102025-O.webp",
+    categoria: "caixas",
+    imagens: [
+      "https://i.postimg.cc/QCXQ6sDX/D-NQ-NP-663326-MLA96078376099-102025-O.webp",
+      "https://i.postimg.cc/QCXQ6sDX/D-NQ-NP-663326-MLA96078376099-102025-O.webp",
+    ],
+  },
+];

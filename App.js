@@ -1,20 +1,26 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+
+import HomeScreen from "./src/screens/HomeScreen";
+import DetalhesScreen from "./src/screens/DetalhesScreen";
+import TodosProdutosScreen from "./src/screens/TodosProdutosScreen";
+import OfertasScreen from "./src/screens/OfertasScreen";  // ✅ AQUI
+
+const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Detalhes" component={DetalhesScreen} />
+
+        {/* 🔥 NOVA TELA DE OFERTAS */}
+        <Stack.Screen name="OfertasScreen" component={OfertasScreen} />
+
+        <Stack.Screen name="TodosProdutos" component={TodosProdutosScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
