@@ -3,7 +3,7 @@
  * Renderiza banners de imagem e dinâmicos automaticamente
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   FlatList,
@@ -17,11 +17,6 @@ import BannerDinamico from './BannerDinamico';
 
 export default function BannerCarousel({ banners, loading = false, onBannerPress }) {
   const { width } = useWindowDimensions();
-
-  // Debug: Log para verificar o estado
-  console.log('[BannerCarousel] Loading:', loading);
-  console.log('[BannerCarousel] Banners:', banners);
-  console.log('[BannerCarousel] Banners length:', banners?.length);
 
   if (loading) {
     return (
@@ -43,9 +38,7 @@ export default function BannerCarousel({ banners, loading = false, onBannerPress
     );
   }
 
-  const renderBanner = ({ item }) => {
-    console.log('[BannerCarousel] Renderizando banner:', item.id, 'Type:', item.type);
-
+  const renderBanner = useCallback(({ item }) => {
     // Se tiver campo 'type', usa normalmente
     if (item.type === 'image') {
       return <BannerImagem banner={item} onPress={onBannerPress} />;
@@ -55,7 +48,6 @@ export default function BannerCarousel({ banners, loading = false, onBannerPress
 
     // FALLBACK: Se não tiver 'type' mas tiver 'imagem', assume como tipo 'image'
     if (!item.type && item.imagem) {
-      console.log('[BannerCarousel] Banner sem type, usando imagem como fallback');
       // Mapeia 'imagem' para 'imageUrl' para compatibilidade
       const bannerCompativel = {
         ...item,
@@ -68,24 +60,31 @@ export default function BannerCarousel({ banners, loading = false, onBannerPress
     // Se não tiver type nem imagem, avisa
     console.warn('[BannerCarousel] Banner sem type válido:', item);
     return null;
-  };
+  }, [onBannerPress]);
+
+  const keyExtractor = useCallback(
+    (item, index) => (item?.id ? String(item.id) : `banner-${index}`),
+    []
+  );
 
   return (
     <View style={styles.container}>
       <FlatList
         data={banners}
         horizontal
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         showsHorizontalScrollIndicator={false}
         snapToInterval={width * 0.90 + 15}
         decelerationRate="fast"
         contentContainerStyle={styles.contentContainer}
-        ItemSeparatorComponent={() => <View style={{ width: 15 }} />}
+        ItemSeparatorComponent={Separator}
         renderItem={renderBanner}
       />
     </View>
   );
 }
+
+const Separator = React.memo(() => <View style={styles.separator} />);
 
 const styles = StyleSheet.create({
   container: {
@@ -93,6 +92,9 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 10,
+  },
+  separator: {
+    width: 15,
   },
   loadingContainer: {
     height: 140,
