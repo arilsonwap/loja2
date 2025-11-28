@@ -1,5 +1,5 @@
 /**
- * ImageBanner - Banner tipo imagem do Firebase
+ * BannerImagem - Banner tipo imagem do Firebase
  * Exibe banners simples com imagem estática
  */
 
@@ -33,7 +33,7 @@ const deriveCardSize = (width) => {
   return { width: computedWidth, height: computedHeight };
 };
 
-export default function ImageBanner({ banner, onPress, placeholder = PLACEHOLDER }) {
+export default function BannerImagem({ banner, onPress, placeholder = PLACEHOLDER }) {
   const { width } = useWindowDimensions();
   const [failedToLoad, setFailedToLoad] = React.useState(false);
 

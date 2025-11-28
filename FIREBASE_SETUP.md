@@ -139,7 +139,7 @@ src/
 │   ├── useBanners.js                  ✅ Hook banners
 │   └── useCategorias.js               ✅ Hook categorias
 ├── components/
-│   ├── ImageBanner.js                 ✅ Banner imagem
+│   ├── BannerImagem.js                ✅ Banner imagem
 │   ├── BannerDinamico.js              ✅ Banner dinâmico
 │   ├── BannerCarousel.js              ✅ Carrossel banners
 │   └── ProductSkeleton.js             ✅ Loading skeleton

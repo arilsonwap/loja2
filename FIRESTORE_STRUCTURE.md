@@ -263,7 +263,7 @@ Para ativar a versão com Firebase:
 
 ### Banners:
 
-- `ImageBanner` - Renderiza banners tipo "image"
+- `BannerImagem` - Renderiza banners tipo "image"
 - `BannerDinamico` - Renderiza banners tipo "dynamic"
 - `BannerCarousel` - Carrossel principal (usa ambos)
 

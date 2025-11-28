@@ -12,7 +12,7 @@ import {
   useWindowDimensions,
   StyleSheet,
 } from 'react-native';
-import ImageBanner from './ImageBanner';
+import BannerImagem from './BannerImagem';
 import BannerDinamico from './BannerDinamico';
 
 export default function BannerCarousel({ banners, loading = false, onBannerPress }) {
@@ -48,7 +48,7 @@ export default function BannerCarousel({ banners, loading = false, onBannerPress
 
     // Se tiver campo 'type', usa normalmente
     if (item.type === 'image') {
-      return <ImageBanner banner={item} onPress={onBannerPress} />;
+      return <BannerImagem banner={item} onPress={onBannerPress} />;
     } else if (item.type === 'dynamic') {
       return <BannerDinamico banner={item} onPress={onBannerPress} />;
     }
@@ -62,7 +62,7 @@ export default function BannerCarousel({ banners, loading = false, onBannerPress
         type: 'image',
         imageUrl: item.imageUrl || item.imagem
       };
-      return <ImageBanner banner={bannerCompativel} onPress={onBannerPress} />;
+      return <BannerImagem banner={bannerCompativel} onPress={onBannerPress} />;
     }
 
     // Se não tiver type nem imagem, avisa
