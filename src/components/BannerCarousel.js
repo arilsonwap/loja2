@@ -20,6 +20,7 @@ export default function BannerCarousel({ banners, loading = false, onBannerPress
   const flatListRef = useRef(null);
   const currentIndexRef = useRef(0);
   const viewabilityConfigRef = useRef({ viewAreaCoveragePercentThreshold: 60 });
+  const autoplayIntervalMs = 5000;
   const itemInterval = width * 0.9 + 15;
 
   const handleViewableItemsChanged = useRef(({ viewableItems }) => {
@@ -38,7 +39,7 @@ export default function BannerCarousel({ banners, loading = false, onBannerPress
       const nextIndex = (currentIndexRef.current + 1) % total;
       flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
       currentIndexRef.current = nextIndex;
-    }, 4000);
+    }, autoplayIntervalMs);
 
     return () => clearInterval(intervalId);
   }, [banners?.length]);
@@ -113,7 +114,8 @@ export default function BannerCarousel({ banners, loading = false, onBannerPress
         keyExtractor={keyExtractor}
         showsHorizontalScrollIndicator={false}
         snapToInterval={itemInterval}
-        decelerationRate="fast"
+        snapToAlignment="center"
+        decelerationRate={0.9}
         contentContainerStyle={styles.contentContainer}
         ItemSeparatorComponent={Separator}
         renderItem={renderBanner}
