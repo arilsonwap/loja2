@@ -313,7 +313,7 @@ export default function DetalhesScreen({ route, navigation }) {
   }, [fotoIndex]);
 
   // ✅ SOLUÇÃO 6: keyExtractor com identificador único ao invés de apenas índice
-  const keyExtractor = useCallback((img, idx) => `${img}-${idx}`, []); // ✅ Combina URL + índice
+  const keyExtractor = useCallback((img, idx) => `${img || 'img'}-${idx}`, []); // ✅ Combina URL + índice com validação
   const similarKeyExtractor = useCallback((i) => i.id, []); // ✅ Memoizado para performance
 
   return (
@@ -337,7 +337,7 @@ export default function DetalhesScreen({ route, navigation }) {
                   ).join('\n\n')
                 );
               }}
-              style={styles.analyticsbadge}
+              style={styles.analyticsBadge}
             >
               <Ionicons name="analytics" size={18} color="#fff" />
               <Text style={styles.analyticsBadgeText}>{errosCarregamento.length}</Text>
@@ -702,7 +702,7 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 
-  analyticsbadge: {
+  analyticsBadge: {
     backgroundColor: "#f44336",
     paddingHorizontal: 8,
     paddingVertical: 4,
