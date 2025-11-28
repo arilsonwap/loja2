@@ -42,14 +42,19 @@ export const getProdutos = async (onUpdate = null) => {
     // Se onUpdate for fornecido, usar onSnapshot para real-time
     if (onUpdate) {
       return onSnapshot(q, (snapshot) => {
-        const produtos = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          // Adiciona flag de novidade
-          isNovo: isNovidade(doc.data().createdAt),
-          // Calcula porcentagem de desconto
-          porcentagemDesconto: calcularDesconto(doc.data())
-        }));
+        const produtos = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            // Garante que sempre tenha 'imagem' (singular) para compatibilidade
+            imagem: data.imagem || (data.imagens && data.imagens[0]) || '',
+            // Adiciona flag de novidade
+            isNovo: isNovidade(data.createdAt),
+            // Calcula porcentagem de desconto
+            porcentagemDesconto: calcularDesconto(data)
+          };
+        });
         onUpdate(produtos);
       }, (error) => {
         console.error('Erro ao buscar produtos:', error);
@@ -59,12 +64,17 @@ export const getProdutos = async (onUpdate = null) => {
 
     // Senão, buscar uma vez
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      isNovo: isNovidade(doc.data().createdAt),
-      porcentagemDesconto: calcularDesconto(doc.data())
-    }));
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        // Garante que sempre tenha 'imagem' (singular) para compatibilidade
+        imagem: data.imagem || (data.imagens && data.imagens[0]) || '',
+        isNovo: isNovidade(data.createdAt),
+        porcentagemDesconto: calcularDesconto(data)
+      };
+    });
   } catch (error) {
     console.error('Erro ao buscar produtos:', error);
     throw error;
@@ -87,12 +97,16 @@ export const getProdutosEmPromocao = async (onUpdate = null) => {
 
     if (onUpdate) {
       return onSnapshot(q, (snapshot) => {
-        const produtos = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          isNovo: isNovidade(doc.data().createdAt),
-          porcentagemDesconto: calcularDesconto(doc.data())
-        }));
+        const produtos = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            imagem: data.imagem || (data.imagens && data.imagens[0]) || '',
+            isNovo: isNovidade(data.createdAt),
+            porcentagemDesconto: calcularDesconto(data)
+          };
+        });
         onUpdate(produtos);
       }, (error) => {
         console.error('Erro ao buscar produtos em promoção:', error);
@@ -101,12 +115,16 @@ export const getProdutosEmPromocao = async (onUpdate = null) => {
     }
 
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      isNovo: isNovidade(doc.data().createdAt),
-      porcentagemDesconto: calcularDesconto(doc.data())
-    }));
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        imagem: data.imagem || (data.imagens && data.imagens[0]) || '',
+        isNovo: isNovidade(data.createdAt),
+        porcentagemDesconto: calcularDesconto(data)
+      };
+    });
   } catch (error) {
     console.error('Erro ao buscar produtos em promoção:', error);
     throw error;
@@ -135,12 +153,16 @@ export const getNovidades = async (onUpdate = null) => {
 
     if (onUpdate) {
       return onSnapshot(q, (snapshot) => {
-        const produtos = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          isNovo: true, // Todos aqui são novos
-          porcentagemDesconto: calcularDesconto(doc.data())
-        }));
+        const produtos = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            imagem: data.imagem || (data.imagens && data.imagens[0]) || '',
+            isNovo: true, // Todos aqui são novos
+            porcentagemDesconto: calcularDesconto(data)
+          };
+        });
         onUpdate(produtos);
       }, (error) => {
         console.error('Erro ao buscar novidades:', error);
@@ -149,12 +171,16 @@ export const getNovidades = async (onUpdate = null) => {
     }
 
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      isNovo: true,
-      porcentagemDesconto: calcularDesconto(doc.data())
-    }));
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        imagem: data.imagem || (data.imagens && data.imagens[0]) || '',
+        isNovo: true,
+        porcentagemDesconto: calcularDesconto(data)
+      };
+    });
   } catch (error) {
     console.error('Erro ao buscar novidades:', error);
     throw error;
@@ -178,12 +204,16 @@ export const getProdutosPorCategoria = async (categoria, onUpdate = null) => {
 
     if (onUpdate) {
       return onSnapshot(q, (snapshot) => {
-        const produtos = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          isNovo: isNovidade(doc.data().createdAt),
-          porcentagemDesconto: calcularDesconto(doc.data())
-        }));
+        const produtos = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            imagem: data.imagem || (data.imagens && data.imagens[0]) || '',
+            isNovo: isNovidade(data.createdAt),
+            porcentagemDesconto: calcularDesconto(data)
+          };
+        });
         onUpdate(produtos);
       }, (error) => {
         console.error('Erro ao buscar produtos por categoria:', error);
@@ -192,12 +222,16 @@ export const getProdutosPorCategoria = async (categoria, onUpdate = null) => {
     }
 
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      isNovo: isNovidade(doc.data().createdAt),
-      porcentagemDesconto: calcularDesconto(doc.data())
-    }));
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        imagem: data.imagem || (data.imagens && data.imagens[0]) || '',
+        isNovo: isNovidade(data.createdAt),
+        porcentagemDesconto: calcularDesconto(data)
+      };
+    });
   } catch (error) {
     console.error('Erro ao buscar produtos por categoria:', error);
     throw error;
@@ -222,6 +256,7 @@ export const getProdutoPorId = async (produtoId) => {
     return {
       id: snapshot.id,
       ...data,
+      imagem: data.imagem || (data.imagens && data.imagens[0]) || '',
       isNovo: isNovidade(data.createdAt),
       porcentagemDesconto: calcularDesconto(data)
     };
