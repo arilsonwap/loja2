@@ -38,6 +38,27 @@ import { useNovidades } from "../hooks/useNovidades";
 import { useBanners } from "../hooks/useBanners";
 import { useCategorias } from "../hooks/useCategorias";
 
+// Ícones válidos do Ionicons
+const ICONES_VALIDOS = [
+  'flame', 'flash', 'rocket', 'star', 'heart', 'cart', 'gift', 'pricetag',
+  'megaphone', 'trophy', 'ribbon', 'sparkles', 'thumbs-up', 'trending-up',
+  'notifications', 'alarm', 'time', 'calendar', 'location', 'headset',
+  'volume-high', 'apps', 'grid', 'list', 'home', 'storefront', 'bag',
+  'card', 'wallet', 'cash', 'hardware-chip'
+];
+
+/**
+ * Valida ícone, retorna padrão se inválido
+ */
+const validarIcone = (iconName) => {
+  if (!iconName) return 'apps';
+  const cleanName = iconName.replace(/^(ios-|md-|logo-)/i, '');
+  if (ICONES_VALIDOS.includes(cleanName) || ICONES_VALIDOS.includes(iconName)) {
+    return iconName;
+  }
+  return 'apps'; // Ícone padrão para categorias
+};
+
 export default function HomeScreenFirebase() {
   const [categoriaSelecionada, setCategoriaSelecionada] = useState(null);
   const navigation = useNavigation();
@@ -91,6 +112,8 @@ export default function HomeScreenFirebase() {
 
   const renderCategoria = ({ item: cat }) => {
     const ativa = categoriaSelecionada === cat.nome;
+    const iconeValido = validarIcone(cat.icone);
+
     return (
       <Pressable
         onPress={() => setCategoriaSelecionada(ativa ? null : cat.nome)}
@@ -100,7 +123,7 @@ export default function HomeScreenFirebase() {
         ]}
       >
         <Ionicons
-          name={cat.icone || "apps"}
+          name={iconeValido}
           size={18}
           color={ativa ? "#fff" : "#ff4081"}
         />

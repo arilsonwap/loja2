@@ -19,6 +19,39 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.90;
 const CARD_HEIGHT = 140;
 
+// Lista de ícones válidos e comuns do Ionicons
+const ICONES_VALIDOS = [
+  'flame', 'flash', 'rocket', 'star', 'heart', 'cart', 'gift', 'pricetag',
+  'megaphone', 'trophy', 'ribbon', 'sparkles', 'thumbs-up', 'trending-up',
+  'notifications', 'alarm', 'time', 'calendar', 'location', 'headset',
+  'volume-high', 'apps', 'grid', 'list', 'home', 'storefront', 'bag',
+  'card', 'wallet', 'cash', 'logo-whatsapp', 'logo-instagram', 'share-social'
+];
+
+/**
+ * Valida se o ícone é válido, retorna um ícone padrão se não for
+ */
+const validarIcone = (iconName) => {
+  if (!iconName) return 'flame';
+
+  // Remove prefixos comuns (ios-, md-, logo-)
+  const cleanName = iconName.replace(/^(ios-|md-|logo-)/i, '');
+
+  // Verifica se está na lista de ícones válidos
+  if (ICONES_VALIDOS.includes(cleanName)) {
+    return cleanName;
+  }
+
+  // Verifica se o nome original é válido (pode ter prefixo)
+  if (ICONES_VALIDOS.includes(iconName)) {
+    return iconName;
+  }
+
+  // Se não for válido, usa o ícone padrão e avisa no console
+  console.warn(`[BannerDinamico] Ícone "${iconName}" não é válido. Usando "flame" como padrão.`);
+  return 'flame';
+};
+
 export default function BannerDinamico({ banner, onPress }) {
   const handlePress = () => {
     if (onPress) {
@@ -34,7 +67,7 @@ export default function BannerDinamico({ banner, onPress }) {
   const gradientStart = banner.gradientStart || '#FF6B6B';
   const gradientEnd = banner.gradientEnd || '#FFE66D';
   const backgroundColor = banner.backgroundColor || '#FF6B6B';
-  const iconName = banner.icon || 'flame';
+  const iconName = validarIcone(banner.icon);
 
   return (
     <TouchableOpacity

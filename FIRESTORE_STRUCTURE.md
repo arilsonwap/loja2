@@ -92,13 +92,22 @@ Armazena as categorias de produtos.
 }
 ```
 
-#### Ícones disponíveis (Ionicons):
+#### Ícones válidos (Ionicons):
 
+**Categorias comuns:**
 - `headset` - Fones
 - `flash` - Cabos
 - `volume-high` - Caixas de som
 - `hardware-chip` - Acessórios
 - `apps` - Diversos
+
+**Outros ícones disponíveis:**
+- `flame`, `rocket`, `star`, `heart`, `cart`, `gift`, `pricetag`
+- `megaphone`, `trophy`, `ribbon`, `sparkles`, `thumbs-up`, `trending-up`
+- `notifications`, `alarm`, `time`, `calendar`, `location`
+- `grid`, `list`, `home`, `storefront`, `bag`, `card`, `wallet`, `cash`
+
+**⚠️ IMPORTANTE:** Use apenas ícones da lista acima. Ícones inválidos serão substituídos automaticamente por um ícone padrão.
 
 ---
 
