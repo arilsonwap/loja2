@@ -18,6 +18,38 @@ import BannerDinamico from './BannerDinamico';
 export default function BannerCarousel({ banners, loading = false, onBannerPress }) {
   const { width } = useWindowDimensions();
 
+  const renderBanner = useCallback(
+    ({ item }) => {
+      // Se tiver campo 'type', usa normalmente
+      if (item.type === 'image') {
+        return <BannerImagem banner={item} onPress={onBannerPress} />;
+      } else if (item.type === 'dynamic') {
+        return <BannerDinamico banner={item} onPress={onBannerPress} />;
+      }
+
+      // FALLBACK: Se não tiver 'type' mas tiver 'imagem', assume como tipo 'image'
+      if (!item.type && item.imagem) {
+        // Mapeia 'imagem' para 'imageUrl' para compatibilidade
+        const bannerCompativel = {
+          ...item,
+          type: 'image',
+          imageUrl: item.imageUrl || item.imagem,
+        };
+        return <BannerImagem banner={bannerCompativel} onPress={onBannerPress} />;
+      }
+
+      // Se não tiver type nem imagem, avisa
+      console.warn('[BannerCarousel] Banner sem type válido:', item);
+      return null;
+    },
+    [onBannerPress]
+  );
+
+  const keyExtractor = useCallback(
+    (item, index) => (item?.id ? String(item.id) : `banner-${index}`),
+    []
+  );
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -37,35 +69,6 @@ export default function BannerCarousel({ banners, loading = false, onBannerPress
       </View>
     );
   }
-
-  const renderBanner = useCallback(({ item }) => {
-    // Se tiver campo 'type', usa normalmente
-    if (item.type === 'image') {
-      return <BannerImagem banner={item} onPress={onBannerPress} />;
-    } else if (item.type === 'dynamic') {
-      return <BannerDinamico banner={item} onPress={onBannerPress} />;
-    }
-
-    // FALLBACK: Se não tiver 'type' mas tiver 'imagem', assume como tipo 'image'
-    if (!item.type && item.imagem) {
-      // Mapeia 'imagem' para 'imageUrl' para compatibilidade
-      const bannerCompativel = {
-        ...item,
-        type: 'image',
-        imageUrl: item.imageUrl || item.imagem
-      };
-      return <BannerImagem banner={bannerCompativel} onPress={onBannerPress} />;
-    }
-
-    // Se não tiver type nem imagem, avisa
-    console.warn('[BannerCarousel] Banner sem type válido:', item);
-    return null;
-  }, [onBannerPress]);
-
-  const keyExtractor = useCallback(
-    (item, index) => (item?.id ? String(item.id) : `banner-${index}`),
-    []
-  );
 
   return (
     <View style={styles.container}>
