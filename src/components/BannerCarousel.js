@@ -3,7 +3,7 @@
  * Renderiza banners de imagem e dinâmicos automaticamente
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -17,6 +17,31 @@ import BannerDinamico from './BannerDinamico';
 
 export default function BannerCarousel({ banners, loading = false, onBannerPress }) {
   const { width } = useWindowDimensions();
+  const flatListRef = useRef(null);
+  const currentIndexRef = useRef(0);
+  const viewabilityConfigRef = useRef({ viewAreaCoveragePercentThreshold: 60 });
+  const itemInterval = width * 0.9 + 15;
+
+  const handleViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (!viewableItems || viewableItems.length === 0) return;
+    const nextIndex = viewableItems[0]?.index;
+    if (typeof nextIndex === 'number') {
+      currentIndexRef.current = nextIndex;
+    }
+  });
+
+  useEffect(() => {
+    const total = banners?.length || 0;
+    if (total <= 1) return undefined;
+
+    const intervalId = setInterval(() => {
+      const nextIndex = (currentIndexRef.current + 1) % total;
+      flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+      currentIndexRef.current = nextIndex;
+    }, 4000);
+
+    return () => clearInterval(intervalId);
+  }, [banners?.length]);
 
   const renderBanner = useCallback(
     ({ item }) => {
@@ -50,6 +75,15 @@ export default function BannerCarousel({ banners, loading = false, onBannerPress
     []
   );
 
+  const getItemLayout = useCallback(
+    (_, index) => ({
+      length: itemInterval,
+      offset: itemInterval * index,
+      index,
+    }),
+    [itemInterval]
+  );
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -73,15 +107,19 @@ export default function BannerCarousel({ banners, loading = false, onBannerPress
   return (
     <View style={styles.container}>
       <FlatList
+        ref={flatListRef}
         data={banners}
         horizontal
         keyExtractor={keyExtractor}
         showsHorizontalScrollIndicator={false}
-        snapToInterval={width * 0.90 + 15}
+        snapToInterval={itemInterval}
         decelerationRate="fast"
         contentContainerStyle={styles.contentContainer}
         ItemSeparatorComponent={Separator}
         renderItem={renderBanner}
+        getItemLayout={getItemLayout}
+        onViewableItemsChanged={handleViewableItemsChanged.current}
+        viewabilityConfig={viewabilityConfigRef.current}
       />
     </View>
   );
