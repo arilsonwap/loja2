@@ -10,7 +10,7 @@ import { Image as ExpoImage } from 'expo-image';
 const PLACEHOLDER = require('../../assets/placeholder.png');
 const CARD_WIDTH_FACTOR = 0.9;
 const MIN_CARD_HEIGHT = 120;
-const MAX_CARD_HEIGHT = 260;
+const MAX_CARD_HEIGHT = 240;
 
 const styles = StyleSheet.create({
   cardBase: {
@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
 const deriveCardSize = (width) => {
   const computedWidth = width * CARD_WIDTH_FACTOR;
   const computedHeight = Math.min(
-    Math.max(computedWidth * 0.55, MIN_CARD_HEIGHT),
+    Math.max(computedWidth * 0.48, MIN_CARD_HEIGHT),
     MAX_CARD_HEIGHT
   );
   return { width: computedWidth, height: computedHeight };

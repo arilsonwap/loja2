@@ -15,7 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
-const CARD_HEIGHT = 140;
+const CARD_HEIGHT = 125;
 
 // Lista de ícones válidos e comuns do Ionicons
 /** @type {Set<string>} */
