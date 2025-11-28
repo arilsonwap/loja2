@@ -16,8 +16,6 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { novidades } from "../data/novidades";
-import { produtos } from "../data/produtos";
 import AnimatedProductCard from "../components/AnimatedProductCard";
 
 const { width } = Dimensions.get("window");
@@ -251,14 +249,11 @@ export default function DetalhesScreen({ route, navigation }) {
     }
   }, [item.nome]); // ✅ Depende apenas de item.nome (estável)
 
+  // Produtos similares - TODO: Integrar com Firebase/Firestore
   const similares = useMemo(() => {
-    const produtosSimilares = produtos.filter(
-      (p) => p.categoria === item.categoria && p.id !== item.id
-    );
-    const novidadesSimilares = novidades.filter(
-      (n) => n.categoria === item.categoria && n.id !== item.id
-    );
-    return [...produtosSimilares, ...novidadesSimilares];
+    // Por enquanto retorna array vazio
+    // Será implementado com getProdutosPorCategoria() do FirestoreService
+    return [];
   }, [item.categoria, item.id]);
 
   // ✅ SOLUÇÃO 3: Callbacks memoizados para FlatList (evita re-renders)
