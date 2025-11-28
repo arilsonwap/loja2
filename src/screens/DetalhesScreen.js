@@ -10,15 +10,13 @@ import {
   FlatList,
   Modal,
   Animated,
-  Dimensions,
+  useWindowDimensions,
   Alert,
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import AnimatedProductCard from "../components/AnimatedProductCard";
-
-const { width } = Dimensions.get("window");
 
 // ✅ SOLUÇÃO 4: PLACEHOLDER_IMAGE definido ANTES de ser usado
 // Deve estar fora e antes do componente para ser acessível
@@ -77,6 +75,7 @@ const ImagemProduto = React.memo(({
 
 export default function DetalhesScreen({ route, navigation }) {
   const { item } = route.params;
+  const { width } = useWindowDimensions(); // ✅ Hook reativo para dimensões
 
   // ✅ Estabilizar array de imagens com useMemo
   const imagens = useMemo(() => item.imagens || [item.imagem], [item.imagens, item.imagem]);
@@ -163,14 +162,29 @@ export default function DetalhesScreen({ route, navigation }) {
 
   // ✅ SOLUÇÃO 2: Dependências corretas no useEffect
   // IMPORTANTE: Array vazio para executar apenas na montagem
-  // O array 'imagens' muda referência a cada render causando loop infinito
+  // ✅ Reset completo ao mudar de produto (baseado no item.id)
   useEffect(() => {
+    // Reset de todos os estados
+    setFotoIndex(0);
+    setImagemErro(false);
+    setErrosCarregamento([]);
+    setZoomOpen(false);
+    setAnimarProxima(false);
+
+    // Inicializar loading state para as imagens atuais
     const loadingState = {};
-    imagens.forEach(img => {
-      loadingState[img] = true; // Sempre iniciar como loading
+    const currentImages = item.imagens || [item.imagem];
+    currentImages.forEach(img => {
+      loadingState[img] = true;
     });
     setImagensCarregando(loadingState);
-  }, []); // ✅ Array vazio - executa apenas uma vez na montagem
+    setImagensCache({});
+
+    // Scroll carrossel para início
+    if (carrosselRef.current) {
+      carrosselRef.current.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [item.id]); // ✅ Dependência no ID do produto - reseta ao navegar para outro produto
 
   // ✅ SOLUÇÃO 5: Prevenir memory leak no Alert com verificação de montagem
   useEffect(() => {
