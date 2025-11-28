@@ -53,6 +53,61 @@ const validarIcone = (iconName) => {
 export default function BannerDinamico({ banner, onPress }) {
   const { width } = useWindowDimensions();
   const CARD_WIDTH = width * 0.90;
+  const styles = React.useMemo(
+    () =>
+      StyleSheet.create({
+        card: {
+          width: CARD_WIDTH,
+          height: CARD_HEIGHT,
+          borderRadius: 14,
+          overflow: 'hidden',
+        },
+        gradient: {
+          flex: 1,
+          padding: 16,
+        },
+        solidBackground: {
+          flex: 1,
+          padding: 16,
+        },
+        content: {
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+        },
+        iconContainer: {
+          marginRight: 16,
+          width: 60,
+          height: 60,
+          borderRadius: 30,
+          backgroundColor: 'rgba(255, 255, 255, 0.2)',
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        textContainer: {
+          flex: 1,
+        },
+        title: {
+          fontSize: 22,
+          fontWeight: 'bold',
+          color: '#fff',
+          marginBottom: 4,
+        },
+        subtitle: {
+          fontSize: 16,
+          fontWeight: '600',
+          color: '#fff',
+          opacity: 0.95,
+          marginBottom: 4,
+        },
+        description: {
+          fontSize: 13,
+          color: '#fff',
+          opacity: 0.85,
+        },
+      }),
+    [CARD_WIDTH]
+  );
 
   const handlePress = () => {
     if (onPress) {
@@ -83,18 +138,18 @@ export default function BannerDinamico({ banner, onPress }) {
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
-          {renderContent(banner, iconName)}
+          {renderContent(banner, iconName, styles)}
         </LinearGradient>
       ) : (
         <View style={[styles.solidBackground, { backgroundColor }]}>
-          {renderContent(banner, iconName)}
+          {renderContent(banner, iconName, styles)}
         </View>
       )}
     </TouchableOpacity>
   );
 }
 
-const renderContent = (banner, iconName) => (
+const renderContent = (banner, iconName, styles) => (
   <View style={styles.content}>
     {/* Ícone */}
     {banner.icon && (
@@ -123,55 +178,3 @@ const renderContent = (banner, iconName) => (
     </View>
   </View>
 );
-
-const styles = StyleSheet.create({
-  card: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  gradient: {
-    flex: 1,
-    padding: 16,
-  },
-  solidBackground: {
-    flex: 1,
-    padding: 16,
-  },
-  content: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  iconContainer: {
-    marginRight: 16,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  textContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    opacity: 0.95,
-    marginBottom: 4,
-  },
-  description: {
-    fontSize: 13,
-    color: '#fff',
-    opacity: 0.85,
-  },
-});
