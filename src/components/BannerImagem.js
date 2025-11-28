@@ -7,17 +7,17 @@ import React from 'react';
 import {
   View,
   TouchableOpacity,
-  Dimensions,
+  useWindowDimensions,
   Linking,
   StyleSheet,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.90;
 const CARD_HEIGHT = 140;
 
 export default function BannerImagem({ banner, onPress }) {
+  const { width } = useWindowDimensions();
+  const CARD_WIDTH = width * 0.90;
   const handlePress = () => {
     if (onPress) {
       onPress(banner);

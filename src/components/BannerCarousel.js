@@ -9,15 +9,15 @@ import {
   FlatList,
   ActivityIndicator,
   Text,
-  Dimensions,
+  useWindowDimensions,
   StyleSheet,
 } from 'react-native';
 import BannerImagem from './BannerImagem';
 import BannerDinamico from './BannerDinamico';
 
-const { width } = Dimensions.get('window');
-
 export default function BannerCarousel({ banners, loading = false, onBannerPress }) {
+  const { width } = useWindowDimensions();
+
   // Debug: Log para verificar o estado
   console.log('[BannerCarousel] Loading:', loading);
   console.log('[BannerCarousel] Banners:', banners);

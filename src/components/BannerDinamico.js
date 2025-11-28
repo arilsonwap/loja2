@@ -8,15 +8,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Dimensions,
+  useWindowDimensions,
   Linking,
   StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.90;
 const CARD_HEIGHT = 140;
 
 // Lista de ícones válidos e comuns do Ionicons
@@ -53,6 +51,9 @@ const validarIcone = (iconName) => {
 };
 
 export default function BannerDinamico({ banner, onPress }) {
+  const { width } = useWindowDimensions();
+  const CARD_WIDTH = width * 0.90;
+
   const handlePress = () => {
     if (onPress) {
       onPress(banner);
