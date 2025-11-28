@@ -129,13 +129,6 @@ const ProductCard = ({ item, isGrid, onPress }) => {
           />
         </TouchableOpacity>
 
-        {/* DESCONTO */}
-        {descontoPercentual && (
-          <View style={styles.seloDesconto}>
-            <Text style={styles.seloDescontoTexto}>-{descontoPercentual}%</Text>
-          </View>
-        )}
-
         {/* IMAGEM */}
         <View style={styles.imgBox}>
           <Image
@@ -144,6 +137,12 @@ const ProductCard = ({ item, isGrid, onPress }) => {
             resizeMode="contain"
             defaultSource={require("../../assets/placeholder.png")}
           />
+
+          {descontoPercentual && (
+            <View style={styles.seloDesconto}>
+              <Text style={styles.seloDescontoTexto}>-{descontoPercentual}%</Text>
+            </View>
+          )}
 
           {item.isNovo && (
             <Animated.View
@@ -226,8 +225,8 @@ const styles = StyleSheet.create({
 
   seloDesconto: {
     position: "absolute",
-    top: 10,
-    left: 10,
+    right: 10,
+    bottom: 10,
     backgroundColor: "#00b894",
     paddingVertical: 4,
     paddingHorizontal: 8,
@@ -249,6 +248,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
+    position: "relative",
   },
 
   cardImg: {
