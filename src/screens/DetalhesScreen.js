@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
   },
 
   imgGrande: {
-    width: width,
+    width: "100%",
     height: 330,
     resizeMode: "contain",
   },
