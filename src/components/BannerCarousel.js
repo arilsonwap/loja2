@@ -46,13 +46,26 @@ export default function BannerCarousel({ banners, loading = false, onBannerPress
   const renderBanner = ({ item }) => {
     console.log('[BannerCarousel] Renderizando banner:', item.id, 'Type:', item.type);
 
+    // Se tiver campo 'type', usa normalmente
     if (item.type === 'image') {
       return <BannerImagem banner={item} onPress={onBannerPress} />;
     } else if (item.type === 'dynamic') {
       return <BannerDinamico banner={item} onPress={onBannerPress} />;
     }
 
-    // Se não tiver type ou type inválido, avisa
+    // FALLBACK: Se não tiver 'type' mas tiver 'imagem', assume como tipo 'image'
+    if (!item.type && item.imagem) {
+      console.log('[BannerCarousel] Banner sem type, usando imagem como fallback');
+      // Mapeia 'imagem' para 'imageUrl' para compatibilidade
+      const bannerCompativel = {
+        ...item,
+        type: 'image',
+        imageUrl: item.imageUrl || item.imagem
+      };
+      return <BannerImagem banner={bannerCompativel} onPress={onBannerPress} />;
+    }
+
+    // Se não tiver type nem imagem, avisa
     console.warn('[BannerCarousel] Banner sem type válido:', item);
     return null;
   };
