@@ -18,16 +18,49 @@ import { Ionicons } from '@expo/vector-icons';
 const CARD_HEIGHT = 140;
 
 // Lista de ícones válidos e comuns do Ionicons
-const ICONES_VALIDOS = [
-  'flame', 'flash', 'rocket', 'star', 'heart', 'cart', 'gift', 'pricetag',
-  'megaphone', 'trophy', 'ribbon', 'sparkles', 'thumbs-up', 'trending-up',
-  'notifications', 'alarm', 'time', 'calendar', 'location', 'headset',
-  'volume-high', 'apps', 'grid', 'list', 'home', 'storefront', 'bag',
-  'card', 'wallet', 'cash', 'logo-whatsapp', 'logo-instagram', 'share-social'
-];
+/** @type {Set<string>} */
+const ICONES_VALIDOS = new Set([
+  'flame',
+  'flash',
+  'rocket',
+  'star',
+  'heart',
+  'cart',
+  'gift',
+  'pricetag',
+  'megaphone',
+  'trophy',
+  'ribbon',
+  'sparkles',
+  'thumbs-up',
+  'trending-up',
+  'notifications',
+  'alarm',
+  'time',
+  'calendar',
+  'location',
+  'headset',
+  'volume-high',
+  'apps',
+  'grid',
+  'list',
+  'home',
+  'storefront',
+  'bag',
+  'card',
+  'wallet',
+  'cash',
+  'logo-whatsapp',
+  'logo-instagram',
+  'share-social',
+]);
 
 /**
  * Valida se o ícone é válido, retorna um ícone padrão se não for
+ */
+/**
+ * @param {string | undefined | null} iconName
+ * @returns {string}
  */
 const validarIcone = (iconName) => {
   if (!iconName) return 'flame';
@@ -36,12 +69,12 @@ const validarIcone = (iconName) => {
   const cleanName = iconName.replace(/^(ios-|md-|logo-)/i, '');
 
   // Verifica se está na lista de ícones válidos
-  if (ICONES_VALIDOS.includes(cleanName)) {
+  if (ICONES_VALIDOS.has(cleanName)) {
     return cleanName;
   }
 
   // Verifica se o nome original é válido (pode ter prefixo)
-  if (ICONES_VALIDOS.includes(iconName)) {
+  if (ICONES_VALIDOS.has(iconName)) {
     return iconName;
   }
 
@@ -50,6 +83,21 @@ const validarIcone = (iconName) => {
   return 'flame';
 };
 
+/**
+ * @typedef {Object} Banner
+ * @property {string=} title
+ * @property {string=} subtitle
+ * @property {string=} description
+ * @property {string=} gradientStart
+ * @property {string=} gradientEnd
+ * @property {string=} backgroundColor
+ * @property {string=} icon
+ * @property {string=} link
+ */
+
+/**
+ * @param {{ banner: Banner; onPress?: (banner: Banner) => void }} props
+ */
 export default function BannerDinamico({ banner, onPress }) {
   const { width } = useWindowDimensions();
   const CARD_WIDTH = width * 0.90;
@@ -62,11 +110,7 @@ export default function BannerDinamico({ banner, onPress }) {
           borderRadius: 14,
           overflow: 'hidden',
         },
-        gradient: {
-          flex: 1,
-          padding: 16,
-        },
-        solidBackground: {
+        container: {
           flex: 1,
           padding: 16,
         },
@@ -136,12 +180,12 @@ export default function BannerDinamico({ banner, onPress }) {
           colors={[gradientStart, gradientEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.gradient}
+          style={styles.container}
         >
           {renderContent(banner, iconName, styles)}
         </LinearGradient>
       ) : (
-        <View style={[styles.solidBackground, { backgroundColor }]}>
+        <View style={[styles.container, { backgroundColor }]}>
           {renderContent(banner, iconName, styles)}
         </View>
       )}
@@ -149,6 +193,11 @@ export default function BannerDinamico({ banner, onPress }) {
   );
 }
 
+/**
+ * @param {Banner} banner
+ * @param {string} iconName
+ * @param {ReturnType<typeof StyleSheet.create>} styles
+ */
 const renderContent = (banner, iconName, styles) => (
   <View style={styles.content}>
     {/* Ícone */}
