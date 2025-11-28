@@ -7,7 +7,7 @@ import React from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   useWindowDimensions,
   Linking,
   StyleSheet,
@@ -98,9 +98,21 @@ const validarIcone = (iconName) => {
 /**
  * @param {{ banner: Banner; onPress?: (banner: Banner) => void }} props
  */
-export default function BannerDinamico({ banner, onPress }) {
+function BannerDinamico({ banner, onPress }) {
   const { width } = useWindowDimensions();
   const CARD_WIDTH = width * 0.90;
+  const {
+    title,
+    subtitle,
+    description,
+    gradientStart = '#FF6B6B',
+    gradientEnd = '#FFE66D',
+    backgroundColor = '#FF6B6B',
+    icon,
+    link,
+  } = banner;
+  const hasGradient = Boolean(banner.gradientStart && banner.gradientEnd);
+  const shouldShowIcon = Boolean(icon);
   const styles = React.useMemo(
     () =>
       StyleSheet.create({
@@ -153,77 +165,101 @@ export default function BannerDinamico({ banner, onPress }) {
     [CARD_WIDTH]
   );
 
+  const accessibilityLabel = React.useMemo(() => {
+    const pieces = [title, subtitle, description].filter(Boolean);
+    return pieces.length ? pieces.join('. ') : 'Abrir banner';
+  }, [description, subtitle, title]);
+
   const handlePress = () => {
     if (onPress) {
       onPress(banner);
-    } else if (banner.link) {
-      Linking.openURL(banner.link).catch((err) =>
+    } else if (link) {
+      Linking.openURL(link).catch((err) =>
         console.warn('Erro ao abrir link:', err)
       );
     }
   };
 
-  // Cores padrão se não fornecidas
-  const gradientStart = banner.gradientStart || '#FF6B6B';
-  const gradientEnd = banner.gradientEnd || '#FFE66D';
-  const backgroundColor = banner.backgroundColor || '#FF6B6B';
-  const iconName = validarIcone(banner.icon);
+  const iconName = validarIcone(icon);
 
   return (
-    <TouchableOpacity
+    <Pressable
       style={styles.card}
-      activeOpacity={0.9}
       onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      android_ripple={{ color: 'rgba(255,255,255,0.15)' }}
     >
-      {banner.gradientStart && banner.gradientEnd ? (
+      {hasGradient ? (
         <LinearGradient
           colors={[gradientStart, gradientEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.container}
         >
-          {renderContent(banner, iconName, styles)}
+          <BannerContent
+            title={title}
+            subtitle={subtitle}
+            description={description}
+            iconName={iconName}
+            showIcon={shouldShowIcon}
+            styles={styles}
+          />
         </LinearGradient>
       ) : (
         <View style={[styles.container, { backgroundColor }]}>
-          {renderContent(banner, iconName, styles)}
+          <BannerContent
+            title={title}
+            subtitle={subtitle}
+            description={description}
+            iconName={iconName}
+            showIcon={shouldShowIcon}
+            styles={styles}
+          />
         </View>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
 /**
- * @param {Banner} banner
- * @param {string} iconName
- * @param {ReturnType<typeof StyleSheet.create>} styles
+ * @param {{
+ *  title?: string;
+ *  subtitle?: string;
+ *  description?: string;
+ *  iconName: string;
+ *  showIcon: boolean;
+ *  styles: ReturnType<typeof StyleSheet.create>;
+ * }} props
  */
-const renderContent = (banner, iconName, styles) => (
-  <View style={styles.content}>
-    {/* Ícone */}
-    {banner.icon && (
-      <View style={styles.iconContainer}>
-        <Ionicons name={iconName} size={40} color="#fff" />
-      </View>
-    )}
+const BannerContent = React.memo(
+  ({ title, subtitle, description, iconName, showIcon, styles }) => (
+    <View style={styles.content}>
+      {showIcon && (
+        <View style={styles.iconContainer}>
+          <Ionicons name={iconName} size={40} color="#fff" />
+        </View>
+      )}
 
-    {/* Textos */}
-    <View style={styles.textContainer}>
-      {banner.title && (
-        <Text style={styles.title} numberOfLines={1}>
-          {banner.title}
-        </Text>
-      )}
-      {banner.subtitle && (
-        <Text style={styles.subtitle} numberOfLines={1}>
-          {banner.subtitle}
-        </Text>
-      )}
-      {banner.description && (
-        <Text style={styles.description} numberOfLines={2}>
-          {banner.description}
-        </Text>
-      )}
+      <View style={styles.textContainer}>
+        {title && (
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+        )}
+        {subtitle && (
+          <Text style={styles.subtitle} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        )}
+        {description && (
+          <Text style={styles.description} numberOfLines={2}>
+            {description}
+          </Text>
+        )}
+      </View>
     </View>
-  </View>
+  )
 );
+
+export default React.memo(BannerDinamico);
