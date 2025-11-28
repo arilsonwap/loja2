@@ -14,6 +14,7 @@ import {
   FlatList,
   StyleSheet,
   ScrollView,
+  RefreshControl,
   Pressable,
   Image,
   Linking,
@@ -61,6 +62,7 @@ const validarIcone = (iconName) => {
 
 export default function HomeScreenFirebase() {
   const [categoriaSelecionada, setCategoriaSelecionada] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
   const { width: screenWidth } = useWindowDimensions();
 
@@ -70,6 +72,16 @@ export default function HomeScreenFirebase() {
   const { novidades, loading: loadingNovidades } = useNovidades();
   const { banners, loading: loadingBanners } = useBanners();
   const { categorias, loading: loadingCategorias } = useCategorias();
+
+  // Função de pull to refresh
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    // Como usamos real-time updates, só precisamos dar feedback visual
+    // Os dados já atualizam automaticamente via onSnapshot
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
+  }, []);
 
   const abrirWhatsApp = useCallback(async () => {
     const numero = "5592999999999";
@@ -145,7 +157,19 @@ export default function HomeScreenFirebase() {
         style={styles.gradientBg}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#ff4081"]}
+            tintColor="#ff4081"
+            title="Atualizando..."
+            titleColor="#ff4081"
+          />
+        }
+      >
         <HeaderLoja />
 
         {/* BANNERS COM REAL-TIME */}
