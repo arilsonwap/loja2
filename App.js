@@ -1,7 +1,7 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import HomeScreen from "./src/screens/HomeScreen";
+import HomeScreen from './src/screens/HomeScreenFirebase';
 import DetalhesScreen from "./src/screens/DetalhesScreen";
 import TodosProdutosScreen from "./src/screens/TodosProdutosScreen";
 import OfertasScreen from "./src/screens/OfertasScreen";  // ✅ AQUI

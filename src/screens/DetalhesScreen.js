@@ -10,17 +10,13 @@ import {
   FlatList,
   Modal,
   Animated,
-  Dimensions,
+  useWindowDimensions,
   Alert,
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { novidades } from "../data/novidades";
-import { produtos } from "../data/produtos";
 import AnimatedProductCard from "../components/AnimatedProductCard";
-
-const { width } = Dimensions.get("window");
 
 // ✅ SOLUÇÃO 4: PLACEHOLDER_IMAGE definido ANTES de ser usado
 // Deve estar fora e antes do componente para ser acessível
@@ -79,6 +75,7 @@ const ImagemProduto = React.memo(({
 
 export default function DetalhesScreen({ route, navigation }) {
   const { item } = route.params;
+  const { width } = useWindowDimensions(); // ✅ Hook reativo para dimensões
 
   // ✅ Estabilizar array de imagens com useMemo
   const imagens = useMemo(() => item.imagens || [item.imagem], [item.imagens, item.imagem]);
@@ -165,14 +162,29 @@ export default function DetalhesScreen({ route, navigation }) {
 
   // ✅ SOLUÇÃO 2: Dependências corretas no useEffect
   // IMPORTANTE: Array vazio para executar apenas na montagem
-  // O array 'imagens' muda referência a cada render causando loop infinito
+  // ✅ Reset completo ao mudar de produto (baseado no item.id)
   useEffect(() => {
+    // Reset de todos os estados
+    setFotoIndex(0);
+    setImagemErro(false);
+    setErrosCarregamento([]);
+    setZoomOpen(false);
+    setAnimarProxima(false);
+
+    // Inicializar loading state para as imagens atuais
     const loadingState = {};
-    imagens.forEach(img => {
-      loadingState[img] = true; // Sempre iniciar como loading
+    const currentImages = item.imagens || [item.imagem];
+    currentImages.forEach(img => {
+      loadingState[img] = true;
     });
     setImagensCarregando(loadingState);
-  }, []); // ✅ Array vazio - executa apenas uma vez na montagem
+    setImagensCache({});
+
+    // Scroll carrossel para início
+    if (carrosselRef.current) {
+      carrosselRef.current.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [item.id]); // ✅ Dependência no ID do produto - reseta ao navegar para outro produto
 
   // ✅ SOLUÇÃO 5: Prevenir memory leak no Alert com verificação de montagem
   useEffect(() => {
@@ -251,14 +263,11 @@ export default function DetalhesScreen({ route, navigation }) {
     }
   }, [item.nome]); // ✅ Depende apenas de item.nome (estável)
 
+  // Produtos similares - TODO: Integrar com Firebase/Firestore
   const similares = useMemo(() => {
-    const produtosSimilares = produtos.filter(
-      (p) => p.categoria === item.categoria && p.id !== item.id
-    );
-    const novidadesSimilares = novidades.filter(
-      (n) => n.categoria === item.categoria && n.id !== item.id
-    );
-    return [...produtosSimilares, ...novidadesSimilares];
+    // Por enquanto retorna array vazio
+    // Será implementado com getProdutosPorCategoria() do FirestoreService
+    return [];
   }, [item.categoria, item.id]);
 
   // ✅ SOLUÇÃO 3: Callbacks memoizados para FlatList (evita re-renders)
@@ -304,7 +313,7 @@ export default function DetalhesScreen({ route, navigation }) {
   }, [fotoIndex]);
 
   // ✅ SOLUÇÃO 6: keyExtractor com identificador único ao invés de apenas índice
-  const keyExtractor = useCallback((img, idx) => `${img}-${idx}`, []); // ✅ Combina URL + índice
+  const keyExtractor = useCallback((img, idx) => `${img || 'img'}-${idx}`, []); // ✅ Combina URL + índice com validação
   const similarKeyExtractor = useCallback((i) => i.id, []); // ✅ Memoizado para performance
 
   return (
@@ -328,7 +337,7 @@ export default function DetalhesScreen({ route, navigation }) {
                   ).join('\n\n')
                 );
               }}
-              style={styles.analyticsbadge}
+              style={styles.analyticsBadge}
             >
               <Ionicons name="analytics" size={18} color="#fff" />
               <Text style={styles.analyticsBadgeText}>{errosCarregamento.length}</Text>
@@ -480,7 +489,7 @@ const styles = StyleSheet.create({
   },
 
   imgGrande: {
-    width: width,
+    width: "100%",
     height: 330,
     resizeMode: "contain",
   },
@@ -693,7 +702,7 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 
-  analyticsbadge: {
+  analyticsBadge: {
     backgroundColor: "#f44336",
     paddingHorizontal: 8,
     paddingVertical: 4,

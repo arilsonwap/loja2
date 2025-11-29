@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, memo } from "react";
+import React, { useEffect, useRef, memo, useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -12,37 +12,102 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFavoritos } from "../hooks/useFavoritos";
-import { useNavigation } from "@react-navigation/native"; // << IMPORTANTE
+import { useNavigation } from "@react-navigation/native";
 
-const ProductCard = ({ item, isGrid, onPress }) => {
+const BREAKPOINTS = {
+  SMALL_SCREEN: 400,
+};
+
+const CARD_SIZES = {
+  LARGE: 180,
+  SMALL: 150,
+};
+
+const warnInvalidProduct = (product) => {
+  if (!product || typeof product !== "object") {
+    console.warn("ProductCard: item inválido fornecido");
+    return;
+  }
+
+  const missingFields = ["id", "nome", "preco", "imagem"].filter(
+    (field) => product[field] === undefined || product[field] === null
+  );
+
+  if (missingFields.length > 0) {
+    console.warn(
+      `ProductCard: item faltando campos obrigatórios (${missingFields.join(", ")})`
+    );
+  }
+};
+
+const formatarPreco = (preco) => {
+  const valor = parseFloat(preco || 0);
+  const partes = valor.toFixed(2).split(".");
+  const inteiro = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const decimal = partes[1];
+  return `${inteiro},${decimal}`;
+};
+
+// Componente separado para selo de desconto
+const SeloDesconto = memo(({ percentual }) => (
+  <View style={styles.seloDesconto}>
+    <Text style={styles.seloDescontoTexto}>-{percentual}%</Text>
+  </View>
+));
+
+// Componente separado para preço
+const PrecoDisplay = memo(({ preco, precoOriginal, hasDesconto }) => (
+  <View style={styles.precoBox}>
+    {hasDesconto ? (
+      <Text style={styles.precoOriginal}>
+        R$ {formatarPreco(precoOriginal)}
+      </Text>
+    ) : (
+      <Text style={styles.precoOriginalPlaceholder}> </Text>
+    )}
+    <View style={styles.priceContainer}>
+      <Text style={styles.currencySymbol}>R$</Text>
+      <Text style={styles.cardPreco}>{formatarPreco(preco)}</Text>
+    </View>
+  </View>
+));
+
+const ProductCard = ({ item, isGrid = false, onPress }) => {
   const navigation = useNavigation();
   const { width } = useWindowDimensions();
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pressAnim = useRef(new Animated.Value(1)).current;
   const animationRef = useRef(null);
+  const [imageError, setImageError] = useState(false);
 
   const { toggleFavorito, isFavorito } = useFavoritos();
 
-  const formatarPreco = (preco) => {
-    return new Intl.NumberFormat("pt-BR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(preco);
-  };
+  const calcularDesconto = useCallback(() => {
+    if (
+      !item.emPromocao ||
+      !item.precoOriginal ||
+      item.precoOriginal <= item.preco
+    ) {
+      return null;
+    }
 
-  // Cálculo automático do desconto
-  const calcularDesconto = () => {
-    if (!item.precoOriginal || item.precoOriginal <= item.preco) return null;
     const desconto = 100 - (item.preco * 100) / item.precoOriginal;
     return Math.round(desconto);
-  };
+  }, [item.emPromocao, item.precoOriginal, item.preco]);
 
-  const descontoPercentual = calcularDesconto();
+  const descontoPercentual = useMemo(() => calcularDesconto(), [calcularDesconto]);
+  const hasDesconto = descontoPercentual !== null;
   const ehFavorito = isFavorito(item.id);
-  const cardWidth = width > 400 ? 180 : 150;
+  const cardWidth = useMemo(
+    () => (width > BREAKPOINTS.SMALL_SCREEN ? CARD_SIZES.LARGE : CARD_SIZES.SMALL),
+    [width]
+  );
 
-  // Animação para itens novos
+  useEffect(() => {
+    warnInvalidProduct(item);
+  }, [item]);
+
   useEffect(() => {
     if (!item.isNovo) return;
 
@@ -69,9 +134,9 @@ const ProductCard = ({ item, isGrid, onPress }) => {
         animationRef.current.stop();
       }
     };
-  }, [item.isNovo]);
+  }, [item.isNovo, pulseAnim]);
 
-  const abrirWhatsApp = async () => {
+  const abrirWhatsApp = useCallback(async () => {
     const numero = "5592999999999";
     const mensagem = `Olá! Tenho interesse no produto: ${item.nome}`;
     const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
@@ -86,13 +151,42 @@ const ProductCard = ({ item, isGrid, onPress }) => {
     } catch (error) {
       Alert.alert("Erro", "Ocorreu um erro ao tentar abrir o WhatsApp.");
     }
-  };
+  }, [item.nome]);
 
-  const abrirDetalhes = () => {
+  const abrirDetalhes = useCallback(() => {
     navigation.navigate("Detalhes", { item });
-  };
+  }, [navigation, item]);
 
-  const handlePress = onPress || abrirDetalhes;
+  const handlePress = useMemo(
+    () => onPress || abrirDetalhes,
+    [onPress, abrirDetalhes]
+  );
+
+  const handlePressIn = useCallback(() => {
+    Animated.spring(pressAnim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 100,
+    }).start();
+  }, [pressAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(pressAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 100,
+    }).start();
+  }, [pressAnim]);
+
+  const handleToggleFavorito = useCallback(() => {
+    toggleFavorito(item);
+  }, [toggleFavorito, item]);
+
+  const handleImageError = useCallback(() => {
+    setImageError(true);
+  }, []);
 
   return (
     <TouchableOpacity
@@ -100,12 +194,8 @@ const ProductCard = ({ item, isGrid, onPress }) => {
       onPress={handlePress}
       accessibilityLabel={`Ver detalhes do produto ${item.nome}`}
       accessibilityRole="button"
-      onPressIn={() => {
-        Animated.spring(pressAnim, { toValue: 0.96, useNativeDriver: true }).start();
-      }}
-      onPressOut={() => {
-        Animated.spring(pressAnim, { toValue: 1, useNativeDriver: true }).start();
-      }}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
     >
       <Animated.View
         style={[
@@ -117,7 +207,7 @@ const ProductCard = ({ item, isGrid, onPress }) => {
         {/* FAVORITO */}
         <TouchableOpacity
           style={styles.favBtn}
-          onPress={() => toggleFavorito(item)}
+          onPress={handleToggleFavorito}
           accessibilityLabel={ehFavorito ? "Remover dos favoritos" : "Adicionar aos favoritos"}
           accessibilityRole="button"
           accessibilityState={{ selected: ehFavorito }}
@@ -129,21 +219,21 @@ const ProductCard = ({ item, isGrid, onPress }) => {
           />
         </TouchableOpacity>
 
-        {/* DESCONTO */}
-        {descontoPercentual && (
-          <View style={styles.seloDesconto}>
-            <Text style={styles.seloDescontoTexto}>-{descontoPercentual}%</Text>
-          </View>
-        )}
-
         {/* IMAGEM */}
         <View style={styles.imgBox}>
           <Image
-            source={{ uri: item.imagem }}
+            source={
+              imageError
+                ? require("../../assets/placeholder.png")
+                : { uri: item.imagem }
+            }
+            onError={handleImageError}
             style={styles.cardImg}
             resizeMode="contain"
             defaultSource={require("../../assets/placeholder.png")}
           />
+
+          {hasDesconto && <SeloDesconto percentual={descontoPercentual} />}
 
           {item.isNovo && (
             <Animated.View
@@ -160,19 +250,11 @@ const ProductCard = ({ item, isGrid, onPress }) => {
             {item.nome}
           </Text>
 
-          {/* PREÇOS */}
-          <View style={styles.precoBox}>
-            {item.precoOriginal && (
-              <Text style={styles.precoOriginal}>
-                R$ {formatarPreco(item.precoOriginal)}
-              </Text>
-            )}
-
-            <View style={styles.priceContainer}>
-              <Text style={styles.currencySymbol}>R$</Text>
-              <Text style={styles.cardPreco}>{formatarPreco(item.preco)}</Text>
-            </View>
-          </View>
+          <PrecoDisplay
+            preco={item.preco}
+            precoOriginal={item.precoOriginal}
+            hasDesconto={hasDesconto}
+          />
         </View>
 
         {/* BOTÃO WHATSAPP */}
@@ -226,8 +308,8 @@ const styles = StyleSheet.create({
 
   seloDesconto: {
     position: "absolute",
-    top: 10,
-    left: 10,
+    right: 10,
+    bottom: 10,
     backgroundColor: "#00b894",
     paddingVertical: 4,
     paddingHorizontal: 8,
@@ -249,6 +331,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
+    position: "relative",
   },
 
   cardImg: {
@@ -297,6 +380,11 @@ const styles = StyleSheet.create({
     color: "#B2BEC3",
     textDecorationLine: "line-through",
     marginLeft: 2,
+  },
+
+  precoOriginalPlaceholder: {
+    fontSize: 12,
+    height: 16,
   },
 
   priceContainer: {
