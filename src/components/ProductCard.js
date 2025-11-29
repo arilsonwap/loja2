@@ -66,10 +66,11 @@ const ProductCard = ({ item, isGrid = false, onPress }) => {
   const { toggleFavorito, isFavorito } = useFavoritos();
 
   const formatarPreco = (preco) => {
-    return new Intl.NumberFormat("pt-BR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(preco);
+    const valor = parseFloat(preco || 0);
+    const partes = valor.toFixed(2).split(".");
+    const inteiro = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    const decimal = partes[1];
+    return `${inteiro},${decimal}`;
   };
 
   // Cálculo automático do desconto
