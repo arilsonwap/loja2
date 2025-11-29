@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, memo, useState } from "react";
-import PropTypes from "prop-types";
 import {
   View,
   Text,
@@ -24,7 +23,7 @@ const CARD_SIZES = {
   SMALL: 150,
 };
 
-const ProductCard = ({ item, isGrid, onPress }) => {
+const ProductCard = ({ item, isGrid = false, onPress }) => {
   const navigation = useNavigation();
   const { width } = useWindowDimensions();
 
@@ -369,24 +368,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 });
-
-ProductCard.propTypes = {
-  item: PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    nome: PropTypes.string.isRequired,
-    preco: PropTypes.number.isRequired,
-    precoOriginal: PropTypes.number,
-    imagem: PropTypes.string,
-    emPromocao: PropTypes.bool,
-    isNovo: PropTypes.bool,
-  }).isRequired,
-  isGrid: PropTypes.bool,
-  onPress: PropTypes.func,
-};
-
-ProductCard.defaultProps = {
-  isGrid: false,
-  onPress: undefined,
-};
 
 export default memo(ProductCard);
