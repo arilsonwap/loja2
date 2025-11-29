@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { produtos } from "../data/produtos";
-import { novidades } from "../data/novidades";
 import AnimatedProductCard from "../components/AnimatedProductCard";
+import { getProdutos } from "../services/firestore/FirestoreService";
 
 // Mesmas categorias da Home
 const categorias = [
@@ -23,19 +22,45 @@ const categorias = [
 
 export default function TodosProdutosScreen({ navigation }) {
   const [categoria, setCategoria] = useState(null);
+  const [produtosFirestore, setProdutosFirestore] = useState([]);
 
-  // Junta tudo num array único
-  const tudo = useMemo(() => {
-    const safeNovidades = Array.isArray(novidades) ? novidades : [];
-    const safeProdutos = Array.isArray(produtos) ? produtos : [];
+  useEffect(() => {
+    let unsubscribe;
 
-    return [...safeNovidades, ...safeProdutos];
+    const fetchProdutos = async () => {
+      try {
+        const result = await getProdutos((produtosAtualizados) => {
+          setProdutosFirestore(produtosAtualizados || []);
+        });
+
+        if (typeof result === "function") {
+          unsubscribe = result;
+        } else if (Array.isArray(result)) {
+          setProdutosFirestore(result);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar produtos:", error);
+        setProdutosFirestore([]);
+      }
+    };
+
+    fetchProdutos();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   // Filtragem
-  const filtrados = categoria
-    ? tudo.filter((item) => item.categoria === categoria)
-    : tudo;
+  const filtrados = useMemo(() => {
+    if (!categoria) {
+      return produtosFirestore;
+    }
+
+    return produtosFirestore.filter((item) => item.categoria === categoria);
+  }, [categoria, produtosFirestore]);
 
   return (
     <View style={styles.container}>
