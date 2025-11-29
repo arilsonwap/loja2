@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, memo } from "react";
+import React, { useEffect, useRef, memo, useState } from "react";
+import PropTypes from "prop-types";
 import {
   View,
   Text,
@@ -14,6 +15,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFavoritos } from "../hooks/useFavoritos";
 import { useNavigation } from "@react-navigation/native"; // << IMPORTANTE
 
+const BREAKPOINTS = {
+  SMALL_SCREEN: 400,
+};
+
+const CARD_SIZES = {
+  LARGE: 180,
+  SMALL: 150,
+};
+
 const ProductCard = ({ item, isGrid, onPress }) => {
   const navigation = useNavigation();
   const { width } = useWindowDimensions();
@@ -21,6 +31,7 @@ const ProductCard = ({ item, isGrid, onPress }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pressAnim = useRef(new Animated.Value(1)).current;
   const animationRef = useRef(null);
+  const [imageError, setImageError] = useState(false);
 
   const { toggleFavorito, isFavorito } = useFavoritos();
 
@@ -48,7 +59,8 @@ const ProductCard = ({ item, isGrid, onPress }) => {
   const descontoPercentual = calcularDesconto();
   const hasDesconto = descontoPercentual !== null;
   const ehFavorito = isFavorito(item.id);
-  const cardWidth = width > 400 ? 180 : 150;
+  const cardWidth =
+    width > BREAKPOINTS.SMALL_SCREEN ? CARD_SIZES.LARGE : CARD_SIZES.SMALL;
 
   // Animação para itens novos
   useEffect(() => {
@@ -109,10 +121,20 @@ const ProductCard = ({ item, isGrid, onPress }) => {
       accessibilityLabel={`Ver detalhes do produto ${item.nome}`}
       accessibilityRole="button"
       onPressIn={() => {
-        Animated.spring(pressAnim, { toValue: 0.96, useNativeDriver: true }).start();
+        Animated.spring(pressAnim, {
+          toValue: 0.96,
+          useNativeDriver: true,
+          friction: 5,
+          tension: 100,
+        }).start();
       }}
       onPressOut={() => {
-        Animated.spring(pressAnim, { toValue: 1, useNativeDriver: true }).start();
+        Animated.spring(pressAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          friction: 5,
+          tension: 100,
+        }).start();
       }}
     >
       <Animated.View
@@ -140,7 +162,12 @@ const ProductCard = ({ item, isGrid, onPress }) => {
         {/* IMAGEM */}
         <View style={styles.imgBox}>
           <Image
-            source={{ uri: item.imagem }}
+            source={
+              imageError
+                ? require("../../assets/placeholder.png")
+                : { uri: item.imagem }
+            }
+            onError={() => setImageError(true)}
             style={styles.cardImg}
             resizeMode="contain"
             defaultSource={require("../../assets/placeholder.png")}
@@ -342,5 +369,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 });
+
+ProductCard.propTypes = {
+  item: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    nome: PropTypes.string.isRequired,
+    preco: PropTypes.number.isRequired,
+    precoOriginal: PropTypes.number,
+    imagem: PropTypes.string,
+    emPromocao: PropTypes.bool,
+    isNovo: PropTypes.bool,
+  }).isRequired,
+  isGrid: PropTypes.bool,
+  onPress: PropTypes.func,
+};
+
+ProductCard.defaultProps = {
+  isGrid: false,
+  onPress: undefined,
+};
 
 export default memo(ProductCard);
