@@ -25,7 +25,12 @@ export default function TodosProdutosScreen({ navigation }) {
   const [categoria, setCategoria] = useState(null);
 
   // Junta tudo num array único
-  const tudo = useMemo(() => [...novidades, ...produtos], []);
+  const tudo = useMemo(() => {
+    const safeNovidades = Array.isArray(novidades) ? novidades : [];
+    const safeProdutos = Array.isArray(produtos) ? produtos : [];
+
+    return [...safeNovidades, ...safeProdutos];
+  }, []);
 
   // Filtragem
   const filtrados = categoria
