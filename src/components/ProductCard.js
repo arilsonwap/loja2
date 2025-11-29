@@ -33,12 +33,20 @@ const ProductCard = ({ item, isGrid, onPress }) => {
 
   // Cálculo automático do desconto
   const calcularDesconto = () => {
-    if (!item.precoOriginal || item.precoOriginal <= item.preco) return null;
+    if (
+      !item.emPromocao ||
+      !item.precoOriginal ||
+      item.precoOriginal <= item.preco
+    ) {
+      return null;
+    }
+
     const desconto = 100 - (item.preco * 100) / item.precoOriginal;
     return Math.round(desconto);
   };
 
   const descontoPercentual = calcularDesconto();
+  const hasDesconto = descontoPercentual !== null;
   const ehFavorito = isFavorito(item.id);
   const cardWidth = width > 400 ? 180 : 150;
 
@@ -138,7 +146,7 @@ const ProductCard = ({ item, isGrid, onPress }) => {
             defaultSource={require("../../assets/placeholder.png")}
           />
 
-          {descontoPercentual && (
+          {hasDesconto && (
             <View style={styles.seloDesconto}>
               <Text style={styles.seloDescontoTexto}>-{descontoPercentual}%</Text>
             </View>
@@ -161,7 +169,7 @@ const ProductCard = ({ item, isGrid, onPress }) => {
 
           {/* PREÇOS */}
           <View style={styles.precoBox}>
-            {item.precoOriginal && (
+            {hasDesconto && (
               <Text style={styles.precoOriginal}>
                 R$ {formatarPreco(item.precoOriginal)}
               </Text>
