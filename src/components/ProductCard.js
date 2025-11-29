@@ -23,6 +23,20 @@ const CARD_SIZES = {
   SMALL: 150,
 };
 
+/**
+ * @typedef {Object} ProductItem
+ * @property {string} id
+ * @property {string} nome
+ * @property {number} preco
+ * @property {number} [precoOriginal]
+ * @property {string} imagem
+ * @property {boolean} [emPromocao]
+ * @property {boolean} [isNovo]
+ */
+
+/**
+ * @param {{ item: ProductItem; isGrid?: boolean; onPress?: () => void }} props
+ */
 const ProductCard = ({ item, isGrid = false, onPress }) => {
   const navigation = useNavigation();
   const { width } = useWindowDimensions();
