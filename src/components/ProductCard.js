@@ -34,6 +34,23 @@ const CARD_SIZES = {
  * @property {boolean} [isNovo]
  */
 
+const warnInvalidProduct = (product) => {
+  if (!product || typeof product !== "object") {
+    console.warn("ProductCard: item inválido fornecido");
+    return;
+  }
+
+  const missingFields = ["id", "nome", "preco", "imagem"].filter(
+    (field) => product[field] === undefined || product[field] === null
+  );
+
+  if (missingFields.length > 0) {
+    console.warn(
+      `ProductCard: item faltando campos obrigatórios (${missingFields.join(", ")})`
+    );
+  }
+};
+
 /**
  * @param {{ item: ProductItem; isGrid?: boolean; onPress?: () => void }} props
  */
@@ -74,6 +91,10 @@ const ProductCard = ({ item, isGrid = false, onPress }) => {
   const ehFavorito = isFavorito(item.id);
   const cardWidth =
     width > BREAKPOINTS.SMALL_SCREEN ? CARD_SIZES.LARGE : CARD_SIZES.SMALL;
+
+  useEffect(() => {
+    warnInvalidProduct(item);
+  }, [item]);
 
   // Animação para itens novos
   useEffect(() => {
