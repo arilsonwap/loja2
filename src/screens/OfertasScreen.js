@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   useWindowDimensions,
   StatusBar,
   Platform,
+  FlatList,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -19,16 +20,35 @@ export default function OfertasScreen() {
   const navigation = useNavigation();
   const { width: windowWidth } = useWindowDimensions();
 
+  /* -------------------------------
+     🔥 ESTADO DE ITENS VISÍVEIS
+  --------------------------------*/
+  const [visiveisOfertas, setVisiveisOfertas] = useState({});
+
+  /* -------------------------------
+     🔥 CONFIG DO FLATLIST PARA VISIBILIDADE
+  --------------------------------*/
+  const viewabilityConfig = useMemo(
+    () => ({ itemVisiblePercentThreshold: 60 }),
+    []
+  );
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    const novoEstado = {};
+    viewableItems.forEach((v) => (novoEstado[v.item.id] = true));
+    setVisiveisOfertas(novoEstado);
+  }).current;
+
   // LISTA DE OFERTAS
   const ofertas = useMemo(() => {
     return produtos.filter((p) => p.precoOriginal);
   }, []);
 
-  // ⭐⭐⭐ GRID LARGO (CÁLCULO PERFEITO)
+  // GRID WIDTH PERFEITO
   const gridItemWidth = useMemo(() => {
-    const sectionMargin = 20;        // 10 esquerda + 10 direita
-    const horizontalPadding = 16 * 2; // padding do grid
-    const gap = 12;                  // espaço entre cards
+    const sectionMargin = 20;
+    const horizontalPadding = 16 * 2;
+    const gap = 12;
     const columns = 2;
 
     const usableWidth = windowWidth - sectionMargin - horizontalPadding;
@@ -45,7 +65,6 @@ export default function OfertasScreen() {
           <Text style={styles.bannerTitle}>Até 50% OFF</Text>
           <Text style={styles.bannerSubtitle}>Em produtos selecionados</Text>
         </View>
-
         <MaterialCommunityIcons name="tag-heart" size={48} color="#FFF" />
       </View>
 
@@ -100,33 +119,39 @@ export default function OfertasScreen() {
           </Text>
         </View>
 
-        {/* CONTAINER DOS CARDS */}
+        {/* 🔥 GRID OTIMIZADO */}
         <View style={styles.sectionBox}>
-          <View style={styles.gridContainer}>
-            {ofertas.map((item, index) => (
+          <FlatList
+            data={ofertas}
+            numColumns={2}
+            keyExtractor={(item) => item.id.toString()}
+            scrollEnabled={false}
+            columnWrapperStyle={{ paddingHorizontal: 16, marginBottom: 14 }}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item, index }) => (
               <View
-                key={item.id}
-                style={[
-                  styles.gridItem,
-                  {
-                    width: gridItemWidth,
-                    marginRight: index % 2 === 0 ? 12 : 0, // gap das colunas
-                    marginBottom: 14,
-                  },
-                ]}
+                style={{
+                  width: gridItemWidth,
+                  marginRight: index % 2 === 0 ? 12 : 0,
+                }}
               >
-                <ProductCard item={item} navigation={navigation} isGrid />
+                <ProductCard
+                  item={item}
+                  isGrid
+                  isVisible={!!visiveisOfertas[item.id]} // 🔥 AQUI
+                />
               </View>
-            ))}
-          </View>
+            )}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+          />
         </View>
 
+        {/* SEM OFERTAS */}
         {ofertas.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="happy-outline" size={48} color="#CCC" />
-            <Text style={styles.emptyStateText}>
-              Nenhuma oferta no momento!
-            </Text>
+            <Text style={styles.emptyStateText}>Nenhuma oferta no momento!</Text>
           </View>
         )}
       </ScrollView>
@@ -134,13 +159,15 @@ export default function OfertasScreen() {
   );
 }
 
+/* ------------------------------
+   ESTILOS
+-------------------------------*/
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#F8F9FA",
   },
 
-  // HEADER
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -152,11 +179,13 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F0F0F0",
     elevation: 2,
   },
+
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#1A1A1A",
   },
+
   iconButton: {
     padding: 8,
     borderRadius: 20,
@@ -167,7 +196,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
   },
 
-  // BANNER
   bannerContainer: {
     marginHorizontal: 12,
     marginTop: 16,
@@ -178,6 +206,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
   },
+
   bannerContent: {
     flex: 1,
     flexDirection: "row",
@@ -185,6 +214,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
   },
+
   bannerLabel: {
     color: "#FFD700",
     fontWeight: "800",
@@ -199,13 +229,13 @@ const styles = StyleSheet.create({
     color: "#EEE",
     marginTop: 4,
   },
+
   circleDecoration: {
     position: "absolute",
     borderRadius: 100,
     backgroundColor: "rgba(255,255,255,0.15)",
   },
 
-  // SEÇÃO
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -213,11 +243,13 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 12,
   },
+
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
   },
+
   itemsCount: {
     fontSize: 14,
     color: "#888",
@@ -230,14 +262,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
 
-  // GRID
   gridContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     paddingHorizontal: 16,
-  },
-  gridItem: {
-    alignItems: "stretch",
   },
 
   emptyState: {

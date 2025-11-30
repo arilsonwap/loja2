@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Linking,
   useWindowDimensions,
 } from "react-native";
+
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -17,13 +18,13 @@ import { useNavigation } from "@react-navigation/native";
 import HeaderLoja from "../components/HeaderLoja";
 import ShopeeBanner from "../components/ShopeeBanner";
 
-import { ofertas } from "../data/ofertas";      // << OFERTAS AGORA OK
+import { ofertas } from "../data/ofertas";
 import { novidades } from "../data/novidades";
 
 import ProductCard from "../components/ProductCard";
 import AnimatedProductCard from "../components/AnimatedProductCard";
 
-// Categorias fixas
+// Categorias
 const CATEGORIAS = [
   { id: "1", nome: "Acessórios", icon: "hardware-chip", chave: "acessorios" },
   { id: "2", nome: "Cabos", icon: "flash", chave: "cabos" },
@@ -33,51 +34,109 @@ const CATEGORIAS = [
 ];
 
 export default function HomeScreen() {
-  const [categoriaSelecionada, setCategoriaSelecionada] = useState(null);
   const navigation = useNavigation();
   const { width: screenWidth } = useWindowDimensions();
+
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState(null);
+  const [visiveisOfertas, setVisiveisOfertas] = useState({});
+  const [visiveisNovidades, setVisiveisNovidades] = useState({});
+
+  /* ============================================================
+     CONFIGURAR VIEWABILITY PARA ANIMAÇÕES DOS CARDS
+  ============================================================ */
+
+  const viewabilityConfig = useMemo(
+    () => ({
+      itemVisiblePercentThreshold: 60,
+    }),
+    []
+  );
+
+  const onViewableOfertas = useRef(({ viewableItems }) => {
+    const novo = {};
+    viewableItems.forEach((v) => (novo[v.item.id] = true));
+    setVisiveisOfertas(novo);
+  }).current;
+
+  const onViewableNovidades = useRef(({ viewableItems }) => {
+    const novo = {};
+    viewableItems.forEach((v) => (novo[v.item.id] = true));
+    setVisiveisNovidades(novo);
+  }).current;
+
+  /* ============================================================
+     ABRIR WHATSAPP
+  ============================================================ */
 
   const abrirWhatsApp = useCallback(async () => {
     const numero = "5592999999999";
     const msg = "Olá! Gostaria de saber mais sobre os produtos.";
     const url = `https://wa.me/${numero}?text=${encodeURIComponent(msg)}`;
+
     if (await Linking.canOpenURL(url)) Linking.openURL(url);
   }, []);
 
-  const embaralhar = (lista) => [...lista].sort(() => Math.random() - 0.5);
+  /* ============================================================
+     FILTROS
+  ============================================================ */
 
-  // FILTRO DE OFERTAS
   const ofertasFiltradas = useMemo(() => {
     return !categoriaSelecionada
       ? ofertas
       : ofertas.filter((item) => item.categoria === categoriaSelecionada);
   }, [categoriaSelecionada]);
 
-  // FILTRO DE NOVIDADES
   const novidadesFiltradas = useMemo(() => {
     return !categoriaSelecionada
       ? novidades
       : novidades.filter((item) => item.categoria === categoriaSelecionada);
   }, [categoriaSelecionada]);
 
-  // Grid embaralhado (novidades)
+  /* ============================================================
+     NOVIDADES + GRID
+  ============================================================ */
+
+  const embaralhar = (lista) => [...lista].sort(() => Math.random() - 0.5);
+
   const grid = useMemo(() => embaralhar(novidadesFiltradas), [novidadesFiltradas]);
 
   const itemWidth = (screenWidth - 48) / 2;
 
-  const renderCard = ({ item }) => (
-    <ProductCard item={item} navigation={navigation} />
+  /* ============================================================
+     RENDERS
+  ============================================================ */
+
+  const renderCardOferta = useCallback(
+    ({ item }) => (
+      <ProductCard
+        item={item}
+        isGrid={false}
+        navigation={navigation}
+        isVisible={!!visiveisOfertas[item.id]}
+      />
+    ),
+    [visiveisOfertas]
+  );
+
+  const renderCardNovidade = useCallback(
+    ({ item }) => (
+      <ProductCard
+        item={item}
+        isGrid={false}
+        navigation={navigation}
+        isVisible={!!visiveisNovidades[item.id]}
+      />
+    ),
+    [visiveisNovidades]
   );
 
   const renderCategoria = ({ item: cat }) => {
     const ativa = categoriaSelecionada === cat.chave;
+
     return (
       <Pressable
         onPress={() => setCategoriaSelecionada(ativa ? null : cat.chave)}
-        style={[
-          styles.catButton,
-          ativa && styles.catButtonActive,
-        ]}
+        style={[styles.catButton, ativa && styles.catButtonActive]}
       >
         <Ionicons name={cat.icon} size={18} color={ativa ? "#fff" : "#ff4081"} />
         <Text style={[styles.catText, ativa && { color: "#fff" }]}>{cat.nome}</Text>
@@ -85,8 +144,13 @@ export default function HomeScreen() {
     );
   };
 
+  /* ============================================================
+     RENDER PRINCIPAL
+  ============================================================ */
+
   return (
     <View style={styles.root}>
+      {/* GRADIENTE FUNDO */}
       <LinearGradient
         colors={[
           "rgba(255,64,129,1)",
@@ -100,7 +164,7 @@ export default function HomeScreen() {
         <HeaderLoja />
         <ShopeeBanner />
 
-        {/* Categorias */}
+        {/* CATEGORIAS */}
         <FlatList
           data={CATEGORIAS}
           horizontal
@@ -128,14 +192,16 @@ export default function HomeScreen() {
             data={ofertasFiltradas}
             horizontal
             showsHorizontalScrollIndicator={false}
-            renderItem={renderCard}
+            renderItem={renderCardOferta}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={{ paddingHorizontal: 10 }}
             style={{ height: 330 }}
+            onViewableItemsChanged={onViewableOfertas}
+            viewabilityConfig={viewabilityConfig}
           />
         </View>
 
-        {/* Separador */}
+        {/* LINHA DIVISORA */}
         <View style={styles.separator}>
           <View style={styles.separatorLine} />
         </View>
@@ -151,14 +217,16 @@ export default function HomeScreen() {
             data={novidadesFiltradas}
             horizontal
             showsHorizontalScrollIndicator={false}
-            renderItem={renderCard}
+            renderItem={renderCardNovidade}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingHorizontal: 10 }}
             style={{ height: 330 }}
+            onViewableItemsChanged={onViewableNovidades}
+            viewabilityConfig={viewabilityConfig}
           />
         </View>
 
-        {/* TODOS PRODUTOS */}
+        {/* TODOS OS PRODUTOS */}
         <View style={styles.rowTitle}>
           <Ionicons name="grid" size={24} color="#444" />
           <Text style={styles.titulo}>Todos os produtos</Text>
@@ -184,18 +252,18 @@ export default function HomeScreen() {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* WHATSAPP */}
-      <Pressable
-        style={styles.whatsButton}
-        onPress={abrirWhatsApp}
-      >
+      {/* BOTÃO WHATSAPP */}
+      <Pressable style={styles.whatsButton} onPress={abrirWhatsApp}>
         <Image source={require("../../assets/whatsapp.png")} style={{ width: 40, height: 40 }} />
       </Pressable>
     </View>
   );
 }
 
-/* =================== ESTILOS =================== */
+/* ============================================================
+   ESTILOS
+============================================================ */
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
 

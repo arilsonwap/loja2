@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,13 +8,15 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AnimatedProductCard from "../components/AnimatedProductCard";
+import ProductCard from "../components/ProductCard";
+
 import { getProdutos } from "../services/firestore/FirestoreService";
 
-// Mesmas categorias da Home
 const categorias = [
   { id: "1", nome: "Acessórios", chave: "acessorios" },
   { id: "2", nome: "Cabos", chave: "cabos" },
@@ -25,12 +27,33 @@ const categorias = [
 
 export default function TodosProdutosScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+
   const [categoria, setCategoria] = useState(null);
   const [produtosFirestore, setProdutosFirestore] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  /* --------------------------------------------------------
+     🔥 NEW — Controle dos itens visíveis
+  -------------------------------------------------------- */
+  const [visiveis, setVisiveis] = useState({});
+
+  const viewabilityConfig = useMemo(() => ({
+    itemVisiblePercentThreshold: 60,
+  }), []);
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    const novo = {};
+    viewableItems.forEach((v) => {
+      novo[v.item.id] = true;
+    });
+    setVisiveis(novo);
+  }).current;
+
+  /* --------------------------------------------------------
+     🔥 FIRESTORE - REALTIME
+  -------------------------------------------------------- */
   useEffect(() => {
     let unsubscribe;
     let isMounted = true;
@@ -47,9 +70,8 @@ export default function TodosProdutosScreen({ navigation }) {
           }
         });
 
-        if (typeof result === "function") {
-          unsubscribe = result;
-        }
+        if (typeof result === "function") unsubscribe = result;
+
       } catch (error) {
         console.error("Erro ao carregar produtos:", error);
         if (isMounted) {
@@ -64,57 +86,49 @@ export default function TodosProdutosScreen({ navigation }) {
 
     return () => {
       isMounted = false;
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
     setError(null);
-    
+
     try {
       await getProdutos((produtosAtualizados) => {
         setProdutosFirestore(produtosAtualizados || []);
         setRefreshing(false);
       });
     } catch (error) {
-      console.error("Erro ao atualizar produtos:", error);
       setError("Erro ao atualizar produtos.");
       setRefreshing(false);
     }
   };
 
-  // Mapa de produtos por categoria para filtragem otimizada
+  /* --------------------------------------------------------
+     🔥 Filtragem otimizada (Map)
+  -------------------------------------------------------- */
   const produtosPorCategoria = useMemo(() => {
     const mapa = new Map();
-    
     produtosFirestore.forEach((produto) => {
       const cat = produto.categoria;
-      if (!mapa.has(cat)) {
-        mapa.set(cat, []);
-      }
+      if (!mapa.has(cat)) mapa.set(cat, []);
       mapa.get(cat).push(produto);
     });
-    
     return mapa;
   }, [produtosFirestore]);
 
-  // Filtragem otimizada usando o mapa
   const filtrados = useMemo(() => {
-    if (!categoria) {
-      return produtosFirestore;
-    }
-    
+    if (!categoria) return produtosFirestore;
     return produtosPorCategoria.get(categoria) || [];
   }, [categoria, produtosFirestore, produtosPorCategoria]);
 
   return (
     <View style={styles.container}>
+      
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <Pressable 
+        <Pressable
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [
             styles.backButton,
@@ -133,8 +147,8 @@ export default function TodosProdutosScreen({ navigation }) {
       <View style={styles.catContainer}>
         <FlatList
           horizontal
-          showsHorizontalScrollIndicator={false}
           data={categorias}
+          showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <Pressable
@@ -161,9 +175,7 @@ export default function TodosProdutosScreen({ navigation }) {
       </View>
 
       {/* TOTAL */}
-      <Text style={styles.totalTxt}>
-        {filtrados.length} produtos encontrados
-      </Text>
+      <Text style={styles.totalTxt}>{filtrados.length} produtos encontrados</Text>
 
       {/* LOADING */}
       {loading && (
@@ -186,8 +198,8 @@ export default function TodosProdutosScreen({ navigation }) {
         <FlatList
           data={filtrados}
           keyExtractor={(item) => item.id.toString()}
-          numColumns={2}
           showsVerticalScrollIndicator={false}
+          numColumns={2}
           contentContainerStyle={styles.gridContent}
           columnWrapperStyle={filtrados.length > 0 ? styles.gridRow : null}
           refreshControl={
@@ -198,6 +210,11 @@ export default function TodosProdutosScreen({ navigation }) {
               tintColor="#ff4081"
             />
           }
+
+          /* 🔥 DETECTAR VISIBILIDADE */
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="file-tray-outline" size={64} color="#ccc" />
@@ -207,9 +224,15 @@ export default function TodosProdutosScreen({ navigation }) {
               )}
             </View>
           }
+
           renderItem={({ item, index }) => (
             <View style={styles.gridItem}>
-              <AnimatedProductCard item={item} index={index} />
+              {/* 🔥 AQUI: Envia isVisible */}
+              <ProductCard
+                item={item}
+                isGrid
+                isVisible={!!visiveis[item.id]}
+              />
             </View>
           )}
         />
@@ -221,10 +244,7 @@ export default function TodosProdutosScreen({ navigation }) {
 /* ================= ESTILOS ================= */
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
 
   header: {
     flexDirection: "row",
@@ -242,11 +262,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
 
-  /* ⭐ CATEGORIAS */
-  catContainer: {
-    paddingVertical: 12,
-    paddingLeft: 10,
-  },
+  catContainer: { paddingVertical: 12, paddingLeft: 10 },
 
   catButton: {
     paddingVertical: 6,
@@ -256,20 +272,15 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
 
-  catButtonActive: {
-    backgroundColor: "#ff4081",
-  },
+  catButtonActive: { backgroundColor: "#ff4081" },
 
   catText: {
     color: "#555",
     fontWeight: "bold",
   },
 
-  catTextActive: {
-    color: "#fff",
-  },
+  catTextActive: { color: "#fff" },
 
-  /* ⭐ TOTAL DE PRODUTOS */
   totalTxt: {
     fontSize: 16,
     marginLeft: 12,
@@ -278,7 +289,6 @@ const styles = StyleSheet.create({
     color: "#444",
   },
 
-  /* ⭐ GRID */
   gridContent: {
     paddingHorizontal: 12,
     paddingBottom: 80,
@@ -294,33 +304,21 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  backButton: {
-    padding: 4,
-  },
-
-  buttonPressed: {
-    opacity: 0.6,
-  },
+  backButton: { padding: 4 },
+  buttonPressed: { opacity: 0.6 },
 
   centerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 40,
+    flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 40,
   },
 
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: "#666",
-  },
+  loadingText: { marginTop: 12, fontSize: 16, color: "#666" },
 
   errorText: {
     marginTop: 12,
     fontSize: 16,
     color: "#999",
-    textAlign: "center",
     paddingHorizontal: 20,
+    textAlign: "center",
   },
 
   emptyContainer: {

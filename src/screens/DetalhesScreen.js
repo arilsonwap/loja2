@@ -20,24 +20,25 @@ import AnimatedProductCard from "../components/AnimatedProductCard";
 
 // ✅ SOLUÇÃO 4: PLACEHOLDER_IMAGE definido ANTES de ser usado
 // Deve estar fora e antes do componente para ser acessível
-const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x330/f0f0f0/999999?text=Imagem+Indisponível';
+const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x330/f0f0f0/999999?text=Imagem+Indisponivel';
 
 // ✅ SOLUÇÃO 1: Componente memoizado fora do componente principal
-// ✅ SOLUÇÃO 5 e 6: Implementadas dentro do componente principal
-const ImagemProduto = React.memo(({ 
-  uri, 
-  style, 
-  onPress, 
-  imagensCarregando, 
-  imagensCache, 
+// ✅ Otimizado para receber apenas primitivos (isLoading, hasError) ao invés de objetos completos
+const ImagemProduto = React.memo(({
+  uri,
+  style,
+  onPress,
+  isLoading,
+  hasError,
+  retryCount,
   onLoadStart,
   onLoad,
   onError,
-  tentarNovamente 
+  tentarNovamente
 }) => {
-  const isLoading = imagensCarregando[uri];
-  const hasError = imagensCache[uri] === false;
-  const imageSource = hasError ? PLACEHOLDER_IMAGE : uri;
+  // ✅ Cache-buster: adicionar query param no retry para forçar novo download
+  const cacheBustedUri = retryCount > 0 ? `${uri}?retry=${retryCount}` : uri;
+  const imageSource = hasError ? PLACEHOLDER_IMAGE : cacheBustedUri;
 
   return (
     <TouchableOpacity onPress={onPress} style={styles.imagemContainer}>
@@ -77,24 +78,50 @@ export default function DetalhesScreen({ route, navigation }) {
   const { item } = route.params;
   const { width } = useWindowDimensions(); // ✅ Hook reativo para dimensões
 
-  // ✅ Estabilizar array de imagens com useMemo
-  const imagens = useMemo(() => item.imagens || [item.imagem], [item.imagens, item.imagem]);
+  // ✅ Estabilizar array de imagens com useMemo e validação robusta
+  const imagens = useMemo(() => {
+    const lista = item.imagens && item.imagens.length > 0
+      ? item.imagens
+      : item.imagem
+        ? [item.imagem]
+        : [];
+
+    // Filtrar valores undefined/null/vazios
+    return lista.filter(img => img && typeof img === 'string' && img.trim().length > 0);
+  }, [item.imagens, item.imagem]);
+
+  // ✅ Normalizar preço para evitar erros com .toFixed()
+  const preco = useMemo(() => {
+    const valor = typeof item.preco === 'number' ? item.preco : parseFloat(item.preco) || 0;
+    return valor.toFixed(2);
+  }, [item.preco]);
+
+  // ✅ Criar identificador único do produto (fallback se não tiver id)
+  const produtoId = useMemo(() =>
+    item.id || `${item.nome}-${item.preco}-${item.imagem}`,
+    [item.id, item.nome, item.preco, item.imagem]
+  );
 
   const [fotoIndex, setFotoIndex] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [animarProxima, setAnimarProxima] = useState(false);
-  const [imagemErro, setImagemErro] = useState(false);
   const [imagensCarregando, setImagensCarregando] = useState({});
   const [imagensCache, setImagensCache] = useState({});
   const [errosCarregamento, setErrosCarregamento] = useState([]);
+  const [retries, setRetries] = useState({}); // { [url]: count }
   
   // ✅ Usar ref para armazenar imagens e evitar dependência
   const imagensRef = useRef(imagens);
-  
+  const fotoIndexRef = useRef(fotoIndex);
+
   useEffect(() => {
     imagensRef.current = imagens;
   }, [imagens]);
-  
+
+  useEffect(() => {
+    fotoIndexRef.current = fotoIndex;
+  }, [fotoIndex]);
+
   const carrosselRef = useRef(null);
   const miniaturasRef = useRef(null);
 
@@ -102,16 +129,12 @@ export default function DetalhesScreen({ route, navigation }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   // ✅ SOLUÇÃO 3: Callbacks memoizados para evitar recriação
-  const registrarErro = useCallback((url, erro) => {
-    const timestamp = new Date().toISOString();
-    const novoErro = { url, erro, timestamp };
-    
-    setErrosCarregamento(prev => [...prev, novoErro]);
-    
-    console.log('📊 ERRO DE IMAGEM:', novoErro);
-  }, []); // ✅ Sem dependências - usa apenas setState funcional
-
   const tentarNovamente = useCallback((url) => {
+    setRetries(prev => ({
+      ...prev,
+      [url]: (prev[url] || 0) + 1,
+    }));
+
     setImagensCarregando(prev => ({ ...prev, [url]: true }));
     setImagensCache(prev => {
       const novo = { ...prev };
@@ -125,12 +148,23 @@ export default function DetalhesScreen({ route, navigation }) {
     setImagensCache(prev => ({ ...prev, [url]: true }));
   }, []); // ✅ Sem dependências - usa apenas setState funcional
 
-  const handleImageError = useCallback((url, erro) => {
+  const handleImageError = useCallback((url, erroBruto) => {
+    const mensagem =
+      typeof erroBruto === "string"
+        ? erroBruto
+        : erroBruto?.message || "Erro desconhecido";
+
+    const timestamp = new Date().toISOString();
+    const novoErro = { url, erro: mensagem, timestamp };
+
     setImagensCarregando(prev => ({ ...prev, [url]: false }));
     setImagensCache(prev => ({ ...prev, [url]: false }));
-    registrarErro(url, erro?.message || 'Erro desconhecido');
-    setImagemErro(true);
-  }, [registrarErro]); // ✅ Depende apenas de registrarErro (que é estável)
+    setErrosCarregamento(prev => [...prev, novoErro]);
+
+    if (__DEV__) {
+      console.log('📊 ERRO DE IMAGEM:', novoErro);
+    }
+  }, []); // ✅ Sem dependências - usa apenas setState funcional
 
   const handleImageLoadStart = useCallback((url) => {
     setImagensCarregando(prev => ({ ...prev, [url]: true }));
@@ -161,15 +195,14 @@ export default function DetalhesScreen({ route, navigation }) {
   }, [fotoIndex, animarProxima, animarImagem]);
 
   // ✅ SOLUÇÃO 2: Dependências corretas no useEffect
-  // IMPORTANTE: Array vazio para executar apenas na montagem
-  // ✅ Reset completo ao mudar de produto (baseado no item.id)
+  // ✅ Reset completo ao mudar de produto (baseado no produtoId)
   useEffect(() => {
     // Reset de todos os estados
     setFotoIndex(0);
-    setImagemErro(false);
     setErrosCarregamento([]);
     setZoomOpen(false);
     setAnimarProxima(false);
+    setRetries({});
 
     // Inicializar loading state para as imagens atuais
     const loadingState = {};
@@ -184,65 +217,30 @@ export default function DetalhesScreen({ route, navigation }) {
     if (carrosselRef.current) {
       carrosselRef.current.scrollToOffset({ offset: 0, animated: false });
     }
-  }, [item.id]); // ✅ Dependência no ID do produto - reseta ao navegar para outro produto
-
-  // ✅ SOLUÇÃO 5: Prevenir memory leak no Alert com verificação de montagem
-  useEffect(() => {
-    let isMounted = true;
-    
-    if (imagemErro && isMounted) {
-      const imagemAtual = imagensRef.current[fotoIndex]; // ✅ Usar ref
-      Alert.alert(
-        "Erro ao carregar imagem",
-        "Não foi possível carregar a imagem do produto.",
-        [
-          { 
-            text: "Cancelar", 
-            style: "cancel", 
-            onPress: () => {
-              if (isMounted) setImagemErro(false);
-            }
-          },
-          { 
-            text: "Tentar Novamente", 
-            onPress: () => {
-              if (isMounted) {
-                setImagemErro(false);
-                tentarNovamente(imagemAtual);
-              }
-            }
-          }
-        ]
-      );
-    }
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [imagemErro, fotoIndex, tentarNovamente]); // ✅ Sem imagens nas dependências
+  }, [produtoId, item.imagens, item.imagem]); // ✅ Dependência no ID único do produto - reseta ao navegar para outro produto
 
   const trocarImagem = useCallback((idx) => {
     setAnimarProxima(true);
     setFotoIndex(idx);
-    
+
     if (carrosselRef.current) {
       carrosselRef.current.scrollToOffset({
         offset: idx * width,
         animated: true,
       });
     }
-    
+
     if (miniaturasRef.current) {
       miniaturasRef.current.scrollTo({
         x: idx * 70 - width / 2 + 35,
         animated: true,
       });
     }
-  }, []); // ✅ Sem dependências - usa refs que são estáveis
+  }, [width]); // ✅ Incluir width nas dependências pois é usado no cálculo
 
   const abrirWhatsApp = useCallback(async () => {
-    const numero = "5592999999999";
-    const msg = `Olá! Tenho interesse no produto: ${item.nome}`;
+    const numero = "5592999999999"; // TODO: Mover para .env ou config
+    const msg = `Olá! Tenho interesse no produto "${item.nome}" (R$ ${preco}).`;
     const url = `https://wa.me/${numero}?text=${encodeURIComponent(msg)}`;
     
     try {
@@ -261,7 +259,7 @@ export default function DetalhesScreen({ route, navigation }) {
         "Não foi possível abrir o WhatsApp. Tente novamente."
       );
     }
-  }, [item.nome]); // ✅ Depende apenas de item.nome (estável)
+  }, [item.nome, preco]); // ✅ Depende de item.nome e preco
 
   // Produtos similares - TODO: Integrar com Firebase/Firestore
   const similares = useMemo(() => {
@@ -271,25 +269,34 @@ export default function DetalhesScreen({ route, navigation }) {
   }, [item.categoria, item.id]);
 
   // ✅ SOLUÇÃO 3: Callbacks memoizados para FlatList (evita re-renders)
-  const renderCarrosselItem = useCallback(({ item: img }) => (
-    <ImagemProduto
-      uri={img}
-      style={[
-        styles.imgGrande,
-        {
-          opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }],
-        },
-      ]}
-      onPress={() => setZoomOpen(true)}
-      imagensCarregando={imagensCarregando}
-      imagensCache={imagensCache}
-      onLoadStart={handleImageLoadStart}
-      onLoad={handleImageLoad}
-      onError={handleImageError}
-      tentarNovamente={tentarNovamente}
-    />
-  ), [fadeAnim, scaleAnim, imagensCarregando, imagensCache, handleImageLoadStart, handleImageLoad, handleImageError, tentarNovamente]);
+  const renderCarrosselItem = useCallback(({ item: img }) => {
+    const isLoading = !!imagensCarregando[img];
+    const hasError = imagensCache[img] === false;
+    const retryCount = retries?.[img] || 0;
+
+    return (
+      <View style={{ width }}>
+        <ImagemProduto
+          uri={img}
+          style={[
+            styles.imgGrande,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
+          onPress={() => setZoomOpen(true)}
+          isLoading={isLoading}
+          hasError={hasError}
+          retryCount={retryCount}
+          onLoadStart={handleImageLoadStart}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+          tentarNovamente={tentarNovamente}
+        />
+      </View>
+    );
+  }, [width, fadeAnim, scaleAnim, imagensCarregando, imagensCache, retries, handleImageLoadStart, handleImageLoad, handleImageError, tentarNovamente]);
 
   const renderSimilarItem = useCallback(({ item }) => (
     <AnimatedProductCard
@@ -301,7 +308,7 @@ export default function DetalhesScreen({ route, navigation }) {
 
   const onCarrosselScroll = useCallback((e) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / width);
-    if (idx !== fotoIndex) {
+    if (idx !== fotoIndexRef.current) {
       setFotoIndex(idx);
       if (miniaturasRef.current) {
         miniaturasRef.current.scrollTo({
@@ -310,142 +317,168 @@ export default function DetalhesScreen({ route, navigation }) {
         });
       }
     }
-  }, [fotoIndex]);
+  }, [width]);
 
   // ✅ SOLUÇÃO 6: keyExtractor com identificador único ao invés de apenas índice
   const keyExtractor = useCallback((img, idx) => `${img || 'img'}-${idx}`, []); // ✅ Combina URL + índice com validação
   const similarKeyExtractor = useCallback((i) => i.id, []); // ✅ Memoizado para performance
 
-  return (
-    <View style={{ flex: 1, backgroundColor: "#fff" }}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+  // ✅ getItemLayout para otimizar scroll do carrossel
+  const getItemLayout = useCallback((data, index) => ({
+    length: width,
+    offset: width * index,
+    index,
+  }), [width]);
 
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={26} color="#333" />
+  // ✅ Função separada para mostrar erros de carregamento
+  const mostrarErros = useCallback(() => {
+    if (errosCarregamento.length === 0) return;
+
+    const msg = errosCarregamento
+      .map((e, i) =>
+        `${i + 1}. ${e.url.substring(0, 30)}...\n   ${e.erro}\n   ${new Date(e.timestamp).toLocaleTimeString()}`
+      )
+      .join("\n\n");
+
+    Alert.alert("📊 Erros de Carregamento", `Total: ${errosCarregamento.length}\n\n${msg}`);
+  }, [errosCarregamento]);
+
+  // ✅ ListHeaderComponent como JSX direto (evita useCallback gigante)
+  const headerComponent = (
+    <>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={26} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Detalhes</Text>
+
+        {__DEV__ && errosCarregamento.length > 0 && (
+          <TouchableOpacity
+            onPress={mostrarErros}
+            style={styles.analyticsBadge}
+          >
+            <Ionicons name="analytics" size={18} color="#fff" />
+            <Text style={styles.analyticsBadgeText}>{errosCarregamento.length}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Detalhes</Text>
-          
-          {__DEV__ && errosCarregamento.length > 0 && (
-            <TouchableOpacity 
-              onPress={() => {
-                Alert.alert(
-                  '📊 Erros de Carregamento',
-                  `Total: ${errosCarregamento.length}\n\n` +
-                  errosCarregamento.map((e, i) => 
-                    `${i + 1}. ${e.url.substring(0, 30)}...\n   ${e.erro}\n   ${new Date(e.timestamp).toLocaleTimeString()}`
-                  ).join('\n\n')
-                );
-              }}
-              style={styles.analyticsBadge}
-            >
-              <Ionicons name="analytics" size={18} color="#fff" />
-              <Text style={styles.analyticsBadgeText}>{errosCarregamento.length}</Text>
-            </TouchableOpacity>
-          )}
-          
-          {!__DEV__ && <View style={{ width: 26 }} />}
-        </View>
-
-        <View>
-          {imagens.length === 1 ? (
-            <ImagemProduto
-              uri={imagens[0]}
-              style={[
-                styles.imgGrande,
-                {
-                  opacity: fadeAnim,
-                  transform: [{ scale: scaleAnim }],
-                },
-              ]}
-              onPress={() => setZoomOpen(true)}
-              imagensCarregando={imagensCarregando}
-              imagensCache={imagensCache}
-              onLoadStart={handleImageLoadStart}
-              onLoad={handleImageLoad}
-              onError={handleImageError}
-              tentarNovamente={tentarNovamente}
-            />
-          ) : (
-            <>
-              <FlatList
-                ref={carrosselRef}
-                data={imagens}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={keyExtractor}
-                onMomentumScrollEnd={onCarrosselScroll}
-                renderItem={renderCarrosselItem}
-              />
-
-              <View style={styles.indicadorNumerico}>
-                <Text style={styles.indicadorTexto}>
-                  {fotoIndex + 1}/{imagens.length}
-                </Text>
-              </View>
-
-              <View style={styles.dotsBox}>
-                {imagens.map((_, i) => (
-                  <View
-                    key={i}
-                    style={[styles.dot, fotoIndex === i && styles.dotActive]}
-                  />
-                ))}
-              </View>
-
-              <ScrollView
-                ref={miniaturasRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.miniaturasContainer}
-                contentContainerStyle={styles.miniaturasContent}
-              >
-                {imagens.map((img, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    onPress={() => trocarImagem(idx)}
-                    style={[
-                      styles.thumbBox,
-                      fotoIndex === idx && styles.thumbActive,
-                    ]}
-                  >
-                    <Image source={{ uri: img }} style={styles.thumbImg} />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </>
-          )}
-        </View>
-
-        <View style={styles.infoBox}>
-          <Text style={styles.nome}>{item.nome}</Text>
-          <Text style={styles.preco}>R$ {item.preco.toFixed(2)}</Text>
-        </View>
-
-        <View style={styles.descricaoBox}>
-          <Text style={styles.descTitulo}>Descrição</Text>
-          <Text style={styles.descTxt}>
-            Produto novo, de alta qualidade. Envio imediato! Qualquer dúvida é só chamar no WhatsApp.
-          </Text>
-        </View>
-
-        {similares.length > 0 && (
-          <View style={styles.similaresBox}>
-            <Text style={styles.similaresTitulo}>Produtos Similares</Text>
-
-            <FlatList
-              data={similares}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={similarKeyExtractor}
-              renderItem={renderSimilarItem}
-            />
-          </View>
         )}
 
-        <View style={{ height: 120 }} />
-      </ScrollView>
+        {!__DEV__ && <View style={{ width: 26 }} />}
+      </View>
+
+      <View>
+        {imagens.length === 0 ? (
+          <View style={[styles.imgGrande, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0' }]}>
+            <Ionicons name="image-outline" size={80} color="#ccc" />
+            <Text style={{ marginTop: 12, fontSize: 14, color: '#999' }}>Sem imagem disponível</Text>
+          </View>
+        ) : imagens.length === 1 ? (
+          <ImagemProduto
+            uri={imagens[0]}
+            style={[
+              styles.imgGrande,
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: scaleAnim }],
+              },
+            ]}
+            onPress={() => setZoomOpen(true)}
+            isLoading={!!imagensCarregando[imagens[0]]}
+            hasError={imagensCache[imagens[0]] === false}
+            retryCount={retries?.[imagens[0]] || 0}
+            onLoadStart={handleImageLoadStart}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+            tentarNovamente={tentarNovamente}
+          />
+        ) : (
+          <>
+            <FlatList
+              ref={carrosselRef}
+              data={imagens}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={keyExtractor}
+              getItemLayout={getItemLayout}
+              snapToInterval={width}
+              decelerationRate="fast"
+              onMomentumScrollEnd={onCarrosselScroll}
+              renderItem={renderCarrosselItem}
+              removeClippedSubviews={true}
+              initialNumToRender={1}
+              maxToRenderPerBatch={1}
+              windowSize={3}
+            />
+
+            <View style={styles.indicadorNumerico}>
+              <Text style={styles.indicadorTexto}>
+                {fotoIndex + 1}/{imagens.length}
+              </Text>
+            </View>
+
+            <View style={styles.dotsBox}>
+              {imagens.map((img, i) => (
+                <View
+                  key={`${img}-dot-${i}`}
+                  style={[styles.dot, fotoIndex === i && styles.dotActive]}
+                />
+              ))}
+            </View>
+
+            <ScrollView
+              ref={miniaturasRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.miniaturasContainer}
+              contentContainerStyle={styles.miniaturasContent}
+            >
+              {imagens.map((img, idx) => (
+                <TouchableOpacity
+                  key={`${img}-thumb-${idx}`}
+                  onPress={() => trocarImagem(idx)}
+                  style={[
+                    styles.thumbBox,
+                    fotoIndex === idx && styles.thumbActive,
+                  ]}
+                >
+                  <Image source={{ uri: img }} style={styles.thumbImg} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        )}
+      </View>
+
+      <View style={styles.infoBox}>
+        <Text style={styles.nome}>{item.nome}</Text>
+        <Text style={styles.preco}>R$ {preco}</Text>
+      </View>
+
+      <View style={styles.descricaoBox}>
+        <Text style={styles.descTitulo}>Descrição</Text>
+        <Text style={styles.descTxt}>
+          Produto novo, de alta qualidade. Envio imediato! Qualquer dúvida é só chamar no WhatsApp.
+        </Text>
+      </View>
+
+      {similares.length > 0 && (
+        <Text style={styles.similaresTitulo}>Produtos Similares</Text>
+      )}
+    </>
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: "#fff" }}>
+      <FlatList
+        ListHeaderComponent={headerComponent}
+        data={similares}
+        horizontal={false}
+        showsVerticalScrollIndicator={false}
+        keyExtractor={similarKeyExtractor}
+        renderItem={renderSimilarItem}
+        ListFooterComponent={<View style={{ height: 120 }} />}
+        contentContainerStyle={similares.length === 0 ? { paddingBottom: 120 } : undefined}
+      />
 
       <TouchableOpacity style={styles.btnWhats} onPress={abrirWhatsApp}>
         <Ionicons name="logo-whatsapp" size={28} color="#fff" />
@@ -461,10 +494,12 @@ export default function DetalhesScreen({ route, navigation }) {
             <Ionicons name="close" size={32} color="#fff" />
           </TouchableOpacity>
 
-          <Image
-            source={{ uri: imagens[fotoIndex] }}
-            style={styles.zoomImg}
-          />
+          {imagens[fotoIndex] && (
+            <Image
+              source={{ uri: imagens[fotoIndex] }}
+              style={styles.zoomImg}
+            />
+          )}
         </View>
       </Modal>
     </View>
@@ -592,10 +627,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  similaresBox: {
-    marginTop: 18,
-  },
-
   similaresTitulo: {
     fontSize: 18,
     fontWeight: "bold",
@@ -692,7 +723,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
   },
 
   retryText: {
@@ -709,7 +739,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
   },
 
   analyticsBadgeText: {

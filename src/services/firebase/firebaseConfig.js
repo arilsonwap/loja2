@@ -6,7 +6,7 @@
  */
 
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 // Suas credenciais reais
@@ -22,8 +22,13 @@ const firebaseConfig = {
 // Inicializa o Firebase
 const app = initializeApp(firebaseConfig);
 
-// Inicializa serviços
-export const db = getFirestore(app);       // Firestore
+// 🔥 Inicializa Firestore com configurações otimizadas para React Native/Expo
+// Resolve problemas de WebChannel e conexão instável
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,  // Remove WebChannel, usa Long Polling estável
+  useFetchStreams: false,              // Desativa streams que causam problemas no RN
+});
+
 export const storage = getStorage(app);    // Storage
 
 export default app;
