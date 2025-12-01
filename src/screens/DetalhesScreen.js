@@ -13,9 +13,9 @@ import {
   useWindowDimensions,
   Alert,
   ActivityIndicator,
+  PanResponder,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { PinchGestureHandler, State } from "react-native-gesture-handler";
 
 import AnimatedProductCard from "../components/AnimatedProductCard";
 
@@ -32,6 +32,16 @@ const imageInitialState = {
   cacheStatus: {},  // { [url]: 'success' | 'error' }
   retries: {},      // { [url]: number }
   errors: [],       // Array de { url, error, timestamp }
+};
+
+const clampScale = (value, min = 1, max = 4) => Math.min(max, Math.max(min, value));
+
+const getTouchDistance = (touches) => {
+  if (!touches || touches.length < 2) return 0;
+  const [touchA, touchB] = touches;
+  const dx = touchA.pageX - touchB.pageX;
+  const dy = touchA.pageY - touchB.pageY;
+  return Math.sqrt(dx * dx + dy * dy);
 };
 
 function imageReducer(state, action) {
@@ -173,11 +183,10 @@ export default function DetalhesScreen({ route, navigation }) {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [animarProxima, setAnimarProxima] = useState(false);
 
-  // ✅ Estado e animação para pinch-to-zoom
-  const pinchScale = useRef(new Animated.Value(1)).current;
-  const baseScale = useRef(new Animated.Value(1)).current;
-  const scale = useMemo(() => Animated.multiply(baseScale, pinchScale), [baseScale, pinchScale]);
+  // ✅ Estado e animação para pinch-to-zoom usando PanResponder nativo
+  const zoomScale = useRef(new Animated.Value(1)).current;
   const lastScale = useRef(1);
+  const initialDistance = useRef(null);
 
   // ✅ REFATORAÇÃO: useReducer para consolidar estado das imagens
   const [imageState, dispatch] = useReducer(imageReducer, imageInitialState);
@@ -231,9 +240,36 @@ export default function DetalhesScreen({ route, navigation }) {
 
   const resetZoom = useCallback(() => {
     lastScale.current = 1;
-    baseScale.setValue(1);
-    pinchScale.setValue(1);
-  }, [baseScale, pinchScale]);
+    initialDistance.current = null;
+    zoomScale.setValue(1);
+  }, [zoomScale]);
+
+  const pinchResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: (evt) => evt.nativeEvent.touches.length === 2,
+    onMoveShouldSetPanResponder: (evt) => evt.nativeEvent.touches.length === 2,
+    onPanResponderGrant: (evt) => {
+      if (evt.nativeEvent.touches.length === 2) {
+        initialDistance.current = getTouchDistance(evt.nativeEvent.touches);
+      }
+    },
+    onPanResponderMove: (evt) => {
+      if (evt.nativeEvent.touches.length === 2 && initialDistance.current) {
+        const distance = getTouchDistance(evt.nativeEvent.touches);
+        if (distance > 0) {
+          const nextScale = clampScale((distance / initialDistance.current) * lastScale.current);
+          zoomScale.setValue(nextScale);
+        }
+      }
+    },
+    onPanResponderRelease: () => {
+      lastScale.current = clampScale(zoomScale.__getValue?.() || lastScale.current);
+      initialDistance.current = null;
+    },
+    onPanResponderTerminate: () => {
+      lastScale.current = clampScale(zoomScale.__getValue?.() || lastScale.current);
+      initialDistance.current = null;
+    },
+  }), [zoomScale]);
 
   const animarImagem = useCallback(() => {
     fadeAnim.setValue(0);
@@ -599,28 +635,15 @@ export default function DetalhesScreen({ route, navigation }) {
           </TouchableOpacity>
 
           {imagens[fotoIndex] && (
-            <PinchGestureHandler
-              onGestureEvent={Animated.event(
-                [{ nativeEvent: { scale: pinchScale } }],
-                { useNativeDriver: true }
-              )}
-              onHandlerStateChange={(event) => {
-                if (event.nativeEvent.oldState === State.ACTIVE) {
-                  let newScale = lastScale.current * event.nativeEvent.scale;
-                  newScale = Math.max(1, Math.min(newScale, 4));
-                  lastScale.current = newScale;
-                  baseScale.setValue(newScale);
-                  pinchScale.setValue(1);
-                }
-              }}
+            <Animated.View
+              style={{ transform: [{ scale: zoomScale }] }}
+              {...pinchResponder.panHandlers}
             >
-              <Animated.View style={{ transform: [{ scale }] }}>
-                <Image
-                  source={{ uri: imagens[fotoIndex] }}
-                  style={styles.zoomImg}
-                />
-              </Animated.View>
-            </PinchGestureHandler>
+              <Image
+                source={{ uri: imagens[fotoIndex] }}
+                style={styles.zoomImg}
+              />
+            </Animated.View>
           )}
 
           <TouchableOpacity style={styles.resetZoom} onPress={resetZoom}>
