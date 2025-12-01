@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { PinchGestureHandler, State } from "react-native-gesture-handler";
 
 import AnimatedProductCard from "../components/AnimatedProductCard";
 
@@ -172,6 +173,12 @@ export default function DetalhesScreen({ route, navigation }) {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [animarProxima, setAnimarProxima] = useState(false);
 
+  // ✅ Estado e animação para pinch-to-zoom
+  const pinchScale = useRef(new Animated.Value(1)).current;
+  const baseScale = useRef(new Animated.Value(1)).current;
+  const scale = useMemo(() => Animated.multiply(baseScale, pinchScale), [baseScale, pinchScale]);
+  const lastScale = useRef(1);
+
   // ✅ REFATORAÇÃO: useReducer para consolidar estado das imagens
   const [imageState, dispatch] = useReducer(imageReducer, imageInitialState);
   
@@ -222,6 +229,12 @@ export default function DetalhesScreen({ route, navigation }) {
     dispatch({ type: 'LOAD_START', payload: { url } });
   }, []); // ✅ dispatch é estável, sem dependências necessárias
 
+  const resetZoom = useCallback(() => {
+    lastScale.current = 1;
+    baseScale.setValue(1);
+    pinchScale.setValue(1);
+  }, [baseScale, pinchScale]);
+
   const animarImagem = useCallback(() => {
     fadeAnim.setValue(0);
     scaleAnim.setValue(0.85);
@@ -245,6 +258,13 @@ export default function DetalhesScreen({ route, navigation }) {
       setAnimarProxima(false);
     }
   }, [fotoIndex, animarProxima, animarImagem]);
+
+  // ✅ Reseta zoom sempre que o modal for aberto
+  useEffect(() => {
+    if (zoomOpen) {
+      resetZoom();
+    }
+  }, [zoomOpen, resetZoom]);
 
   // ✅ Detecta mudança de produto e inicia loading
   useEffect(() => {
@@ -579,11 +599,34 @@ export default function DetalhesScreen({ route, navigation }) {
           </TouchableOpacity>
 
           {imagens[fotoIndex] && (
-            <Image
-              source={{ uri: imagens[fotoIndex] }}
-              style={styles.zoomImg}
-            />
+            <PinchGestureHandler
+              onGestureEvent={Animated.event(
+                [{ nativeEvent: { scale: pinchScale } }],
+                { useNativeDriver: true }
+              )}
+              onHandlerStateChange={(event) => {
+                if (event.nativeEvent.oldState === State.ACTIVE) {
+                  let newScale = lastScale.current * event.nativeEvent.scale;
+                  newScale = Math.max(1, Math.min(newScale, 4));
+                  lastScale.current = newScale;
+                  baseScale.setValue(newScale);
+                  pinchScale.setValue(1);
+                }
+              }}
+            >
+              <Animated.View style={{ transform: [{ scale }] }}>
+                <Image
+                  source={{ uri: imagens[fotoIndex] }}
+                  style={styles.zoomImg}
+                />
+              </Animated.View>
+            </PinchGestureHandler>
           )}
+
+          <TouchableOpacity style={styles.resetZoom} onPress={resetZoom}>
+            <Ionicons name="refresh" size={20} color="#fff" />
+            <Text style={styles.resetZoomText}>Resetar zoom</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </View>
@@ -756,6 +799,24 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 40,
     right: 20,
+  },
+
+  resetZoom: {
+    position: "absolute",
+    bottom: 40,
+    alignSelf: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  resetZoomText: {
+    color: "#fff",
+    marginLeft: 8,
+    fontWeight: "600",
   },
 
   imagemContainer: {
