@@ -156,8 +156,10 @@ function ProductCard({
   }, [item.nome]);
 
   const abrirDetalhes = useCallback(() => {
-    navigation.navigate("Detalhes", { item });
-  }, [item]);
+    // ✅ Usa push ao invés de navigate para empilhar telas
+    // Permite navegar entre produtos similares mantendo histórico
+    navigation.push("Detalhes", { item });
+  }, [item, navigation]);
 
   const handlePress = onPress || abrirDetalhes;
 

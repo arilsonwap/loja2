@@ -9,16 +9,22 @@ import {
   StatusBar,
   Platform,
   FlatList,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
-import { produtos } from "../data/produtos";
+import { useProdutosEmPromocao } from "../hooks/useProdutosEmPromocao";
 import ProductCard from "../components/ProductCard";
 
 export default function OfertasScreen() {
   const navigation = useNavigation();
   const { width: windowWidth } = useWindowDimensions();
+
+  /* -------------------------------
+     🔥 BUSCAR PRODUTOS DO FIREBASE
+  --------------------------------*/
+  const { ofertas, loading, error } = useProdutosEmPromocao();
 
   /* -------------------------------
      🔥 ESTADO DE ITENS VISÍVEIS
@@ -38,11 +44,6 @@ export default function OfertasScreen() {
     viewableItems.forEach((v) => (novoEstado[v.item.id] = true));
     setVisiveisOfertas(novoEstado);
   }).current;
-
-  // LISTA DE OFERTAS
-  const ofertas = useMemo(() => {
-    return produtos.filter((p) => p.precoOriginal);
-  }, []);
 
   // GRID WIDTH PERFEITO
   const gridItemWidth = useMemo(() => {
@@ -104,12 +105,24 @@ export default function OfertasScreen() {
       </View>
 
       {/* CONTEÚDO */}
-      <ScrollView
-        style={{ flex: 1 }}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <RenderBanner />
+      {loading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#4F46E5" />
+          <Text style={styles.loadingText}>Carregando ofertas...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.centerContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#FF4757" />
+          <Text style={styles.errorText}>Erro ao carregar ofertas</Text>
+          <Text style={styles.errorSubtext}>{error}</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <RenderBanner />
 
         {/* Título da Seção */}
         <View style={styles.sectionHeader}>
@@ -155,6 +168,7 @@ export default function OfertasScreen() {
           </View>
         )}
       </ScrollView>
+      )}
     </View>
   );
 }
@@ -276,5 +290,33 @@ const styles = StyleSheet.create({
   emptyStateText: {
     marginTop: 10,
     color: "#999",
+  },
+
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#4F46E5",
+    fontWeight: "600",
+  },
+
+  errorText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#FF4757",
+    fontWeight: "600",
+  },
+
+  errorSubtext: {
+    marginTop: 4,
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
   },
 });

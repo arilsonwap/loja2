@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback, useReducer } from "react";
 import {
   View,
   Text,
@@ -21,6 +21,69 @@ import AnimatedProductCard from "../components/AnimatedProductCard";
 // ✅ SOLUÇÃO 4: PLACEHOLDER_IMAGE definido ANTES de ser usado
 // Deve estar fora e antes do componente para ser acessível
 const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x330/f0f0f0/999999?text=Imagem+Indisponivel';
+
+// ============================================
+// REDUCER PARA GERENCIAR ESTADO DAS IMAGENS
+// ============================================
+
+const imageInitialState = {
+  loading: {},      // { [url]: boolean }
+  cacheStatus: {},  // { [url]: 'success' | 'error' }
+  retries: {},      // { [url]: number }
+  errors: [],       // Array de { url, error, timestamp }
+};
+
+function imageReducer(state, action) {
+  switch (action.type) {
+    case 'LOAD_START':
+      return {
+        ...state,
+        loading: { ...state.loading, [action.payload.url]: true },
+      };
+
+    case 'LOAD_SUCCESS':
+      return {
+        ...state,
+        loading: { ...state.loading, [action.payload.url]: false },
+        cacheStatus: { ...state.cacheStatus, [action.payload.url]: 'success' },
+      };
+
+    case 'LOAD_ERROR': {
+      const { url, errorInfo } = action.payload;
+      return {
+        ...state,
+        loading: { ...state.loading, [url]: false },
+        cacheStatus: { ...state.cacheStatus, [url]: 'error' },
+        errors: [...state.errors, errorInfo],
+      };
+    }
+
+    case 'RETRY': {
+      const { url } = action.payload;
+      const newState = { ...state };
+      delete newState.cacheStatus[url];
+      return {
+        ...newState,
+        loading: { ...state.loading, [url]: true },
+        retries: { ...state.retries, [url]: (state.retries[url] || 0) + 1 },
+      };
+    }
+
+    case 'RESET': {
+      const initialLoading = {};
+      action.payload.imageUrls.forEach(url => {
+        initialLoading[url] = true;
+      });
+      return {
+        ...imageInitialState,
+        loading: initialLoading,
+      };
+    }
+
+    default:
+      return state;
+  }
+}
 
 // ✅ SOLUÇÃO 1: Componente memoizado fora do componente principal
 // ✅ Otimizado para receber apenas primitivos (isLoading, hasError) ao invés de objetos completos
@@ -78,6 +141,9 @@ export default function DetalhesScreen({ route, navigation }) {
   const { item } = route.params;
   const { width } = useWindowDimensions(); // ✅ Hook reativo para dimensões
 
+  // ✅ Estado de carregamento do produto para transições suaves
+  const [isProductLoading, setIsProductLoading] = useState(true);
+
   // ✅ Estabilizar array de imagens com useMemo e validação robusta
   const imagens = useMemo(() => {
     const lista = item.imagens && item.imagens.length > 0
@@ -105,10 +171,9 @@ export default function DetalhesScreen({ route, navigation }) {
   const [fotoIndex, setFotoIndex] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [animarProxima, setAnimarProxima] = useState(false);
-  const [imagensCarregando, setImagensCarregando] = useState({});
-  const [imagensCache, setImagensCache] = useState({});
-  const [errosCarregamento, setErrosCarregamento] = useState([]);
-  const [retries, setRetries] = useState({}); // { [url]: count }
+
+  // ✅ REFATORAÇÃO: useReducer para consolidar estado das imagens
+  const [imageState, dispatch] = useReducer(imageReducer, imageInitialState);
   
   // ✅ Usar ref para armazenar imagens e evitar dependência
   const imagensRef = useRef(imagens);
@@ -128,25 +193,14 @@ export default function DetalhesScreen({ route, navigation }) {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  // ✅ SOLUÇÃO 3: Callbacks memoizados para evitar recriação
+  // ✅ REFATORAÇÃO: Callbacks usando dispatch do reducer
   const tentarNovamente = useCallback((url) => {
-    setRetries(prev => ({
-      ...prev,
-      [url]: (prev[url] || 0) + 1,
-    }));
-
-    setImagensCarregando(prev => ({ ...prev, [url]: true }));
-    setImagensCache(prev => {
-      const novo = { ...prev };
-      delete novo[url];
-      return novo;
-    });
-  }, []); // ✅ Sem dependências - usa apenas setState funcional
+    dispatch({ type: 'RETRY', payload: { url } });
+  }, []); // ✅ dispatch é estável, sem dependências necessárias
 
   const handleImageLoad = useCallback((url) => {
-    setImagensCarregando(prev => ({ ...prev, [url]: false }));
-    setImagensCache(prev => ({ ...prev, [url]: true }));
-  }, []); // ✅ Sem dependências - usa apenas setState funcional
+    dispatch({ type: 'LOAD_SUCCESS', payload: { url } });
+  }, []); // ✅ dispatch é estável, sem dependências necessárias
 
   const handleImageError = useCallback((url, erroBruto) => {
     const mensagem =
@@ -155,20 +209,18 @@ export default function DetalhesScreen({ route, navigation }) {
         : erroBruto?.message || "Erro desconhecido";
 
     const timestamp = new Date().toISOString();
-    const novoErro = { url, erro: mensagem, timestamp };
+    const errorInfo = { url, erro: mensagem, timestamp };
 
-    setImagensCarregando(prev => ({ ...prev, [url]: false }));
-    setImagensCache(prev => ({ ...prev, [url]: false }));
-    setErrosCarregamento(prev => [...prev, novoErro]);
+    dispatch({ type: 'LOAD_ERROR', payload: { url, errorInfo } });
 
     if (__DEV__) {
-      console.log('📊 ERRO DE IMAGEM:', novoErro);
+      console.log('📊 ERRO DE IMAGEM:', errorInfo);
     }
-  }, []); // ✅ Sem dependências - usa apenas setState funcional
+  }, []); // ✅ dispatch é estável, sem dependências necessárias
 
   const handleImageLoadStart = useCallback((url) => {
-    setImagensCarregando(prev => ({ ...prev, [url]: true }));
-  }, []); // ✅ Sem dependências - usa apenas setState funcional
+    dispatch({ type: 'LOAD_START', payload: { url } });
+  }, []); // ✅ dispatch é estável, sem dependências necessárias
 
   const animarImagem = useCallback(() => {
     fadeAnim.setValue(0);
@@ -194,30 +246,31 @@ export default function DetalhesScreen({ route, navigation }) {
     }
   }, [fotoIndex, animarProxima, animarImagem]);
 
-  // ✅ SOLUÇÃO 2: Dependências corretas no useEffect
+  // ✅ Detecta mudança de produto e inicia loading
+  useEffect(() => {
+    setIsProductLoading(true);
+  }, [produtoId]);
+
+  // ✅ REFATORAÇÃO: Reset usando dispatch do reducer
   // ✅ Reset completo ao mudar de produto (baseado no produtoId)
   useEffect(() => {
     // Reset de todos os estados
     setFotoIndex(0);
-    setErrosCarregamento([]);
     setZoomOpen(false);
     setAnimarProxima(false);
-    setRetries({});
 
-    // Inicializar loading state para as imagens atuais
-    const loadingState = {};
-    const currentImages = item.imagens || [item.imagem];
-    currentImages.forEach(img => {
-      loadingState[img] = true;
-    });
-    setImagensCarregando(loadingState);
-    setImagensCache({});
+    // Reset do estado das imagens via reducer
+    dispatch({ type: 'RESET', payload: { imageUrls: imagens } });
 
     // Scroll carrossel para início
     if (carrosselRef.current) {
       carrosselRef.current.scrollToOffset({ offset: 0, animated: false });
     }
-  }, [produtoId, item.imagens, item.imagem]); // ✅ Dependência no ID único do produto - reseta ao navegar para outro produto
+
+    // Finaliza loading após garantir que tudo foi resetado
+    const timer = setTimeout(() => setIsProductLoading(false), 100);
+    return () => clearTimeout(timer);
+  }, [produtoId, imagens]); // ✅ Dependência no ID único do produto e imagens
 
   const trocarImagem = useCallback((idx) => {
     setAnimarProxima(true);
@@ -230,10 +283,12 @@ export default function DetalhesScreen({ route, navigation }) {
       });
     }
 
+    // ✅ OTIMIZAÇÃO: scrollToIndex ao invés de scrollTo para FlatList
     if (miniaturasRef.current) {
-      miniaturasRef.current.scrollTo({
-        x: idx * 70 - width / 2 + 35,
+      miniaturasRef.current.scrollToIndex({
+        index: idx,
         animated: true,
+        viewPosition: 0.5, // Centraliza a miniatura
       });
     }
   }, [width]); // ✅ Incluir width nas dependências pois é usado no cálculo
@@ -268,11 +323,11 @@ export default function DetalhesScreen({ route, navigation }) {
     return [];
   }, [item.categoria, item.id]);
 
-  // ✅ SOLUÇÃO 3: Callbacks memoizados para FlatList (evita re-renders)
+  // ✅ REFATORAÇÃO: Callbacks usando imageState
   const renderCarrosselItem = useCallback(({ item: img }) => {
-    const isLoading = !!imagensCarregando[img];
-    const hasError = imagensCache[img] === false;
-    const retryCount = retries?.[img] || 0;
+    const isLoading = !!imageState.loading[img];
+    const hasError = imageState.cacheStatus[img] === 'error';
+    const retryCount = imageState.retries[img] || 0;
 
     return (
       <View style={{ width }}>
@@ -296,7 +351,7 @@ export default function DetalhesScreen({ route, navigation }) {
         />
       </View>
     );
-  }, [width, fadeAnim, scaleAnim, imagensCarregando, imagensCache, retries, handleImageLoadStart, handleImageLoad, handleImageError, tentarNovamente]);
+  }, [width, fadeAnim, scaleAnim, imageState.loading, imageState.cacheStatus, imageState.retries, handleImageLoadStart, handleImageLoad, handleImageError, tentarNovamente]);
 
   const renderSimilarItem = useCallback(({ item }) => (
     <AnimatedProductCard
@@ -306,14 +361,29 @@ export default function DetalhesScreen({ route, navigation }) {
     />
   ), [navigation]);
 
+  // ✅ Renderização otimizada de miniaturas com FlatList
+  const renderMiniatura = useCallback(({ item: img, index: idx }) => (
+    <TouchableOpacity
+      onPress={() => trocarImagem(idx)}
+      style={[
+        styles.thumbBox,
+        fotoIndex === idx && styles.thumbActive,
+      ]}
+    >
+      <Image source={{ uri: img }} style={styles.thumbImg} />
+    </TouchableOpacity>
+  ), [fotoIndex, trocarImagem]);
+
   const onCarrosselScroll = useCallback((e) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / width);
     if (idx !== fotoIndexRef.current) {
       setFotoIndex(idx);
+      // ✅ OTIMIZAÇÃO: scrollToIndex ao invés de scrollTo para FlatList
       if (miniaturasRef.current) {
-        miniaturasRef.current.scrollTo({
-          x: idx * 70 - width / 2 + 35,
+        miniaturasRef.current.scrollToIndex({
+          index: idx,
           animated: true,
+          viewPosition: 0.5, // Centraliza a miniatura
         });
       }
     }
@@ -322,6 +392,7 @@ export default function DetalhesScreen({ route, navigation }) {
   // ✅ SOLUÇÃO 6: keyExtractor com identificador único ao invés de apenas índice
   const keyExtractor = useCallback((img, idx) => `${img || 'img'}-${idx}`, []); // ✅ Combina URL + índice com validação
   const similarKeyExtractor = useCallback((i) => i.id, []); // ✅ Memoizado para performance
+  const thumbKeyExtractor = useCallback((img, idx) => `thumb-${img}-${idx}`, []); // ✅ Key para miniaturas
 
   // ✅ getItemLayout para otimizar scroll do carrossel
   const getItemLayout = useCallback((data, index) => ({
@@ -330,18 +401,25 @@ export default function DetalhesScreen({ route, navigation }) {
     index,
   }), [width]);
 
-  // ✅ Função separada para mostrar erros de carregamento
-  const mostrarErros = useCallback(() => {
-    if (errosCarregamento.length === 0) return;
+  // ✅ getItemLayout para otimizar scroll das miniaturas
+  const getThumbItemLayout = useCallback((data, index) => ({
+    length: 70, // 60px width + 10px marginRight
+    offset: 70 * index,
+    index,
+  }), []);
 
-    const msg = errosCarregamento
+  // ✅ REFATORAÇÃO: Função usando imageState.errors
+  const mostrarErros = useCallback(() => {
+    if (imageState.errors.length === 0) return;
+
+    const msg = imageState.errors
       .map((e, i) =>
         `${i + 1}. ${e.url.substring(0, 30)}...\n   ${e.erro}\n   ${new Date(e.timestamp).toLocaleTimeString()}`
       )
       .join("\n\n");
 
-    Alert.alert("📊 Erros de Carregamento", `Total: ${errosCarregamento.length}\n\n${msg}`);
-  }, [errosCarregamento]);
+    Alert.alert("📊 Erros de Carregamento", `Total: ${imageState.errors.length}\n\n${msg}`);
+  }, [imageState.errors]);
 
   // ✅ ListHeaderComponent como JSX direto (evita useCallback gigante)
   const headerComponent = (
@@ -352,13 +430,13 @@ export default function DetalhesScreen({ route, navigation }) {
         </TouchableOpacity>
         <Text style={styles.title}>Detalhes</Text>
 
-        {__DEV__ && errosCarregamento.length > 0 && (
+        {__DEV__ && imageState.errors.length > 0 && (
           <TouchableOpacity
             onPress={mostrarErros}
             style={styles.analyticsBadge}
           >
             <Ionicons name="analytics" size={18} color="#fff" />
-            <Text style={styles.analyticsBadgeText}>{errosCarregamento.length}</Text>
+            <Text style={styles.analyticsBadgeText}>{imageState.errors.length}</Text>
           </TouchableOpacity>
         )}
 
@@ -382,9 +460,9 @@ export default function DetalhesScreen({ route, navigation }) {
               },
             ]}
             onPress={() => setZoomOpen(true)}
-            isLoading={!!imagensCarregando[imagens[0]]}
-            hasError={imagensCache[imagens[0]] === false}
-            retryCount={retries?.[imagens[0]] || 0}
+            isLoading={!!imageState.loading[imagens[0]]}
+            hasError={imageState.cacheStatus[imagens[0]] === 'error'}
+            retryCount={imageState.retries[imagens[0]] || 0}
             onLoadStart={handleImageLoadStart}
             onLoad={handleImageLoad}
             onError={handleImageError}
@@ -425,26 +503,22 @@ export default function DetalhesScreen({ route, navigation }) {
               ))}
             </View>
 
-            <ScrollView
+            {/* ✅ OTIMIZAÇÃO: FlatList ao invés de ScrollView + map */}
+            <FlatList
               ref={miniaturasRef}
+              data={imagens}
               horizontal
               showsHorizontalScrollIndicator={false}
+              keyExtractor={thumbKeyExtractor}
+              getItemLayout={getThumbItemLayout}
+              renderItem={renderMiniatura}
               style={styles.miniaturasContainer}
               contentContainerStyle={styles.miniaturasContent}
-            >
-              {imagens.map((img, idx) => (
-                <TouchableOpacity
-                  key={`${img}-thumb-${idx}`}
-                  onPress={() => trocarImagem(idx)}
-                  style={[
-                    styles.thumbBox,
-                    fotoIndex === idx && styles.thumbActive,
-                  ]}
-                >
-                  <Image source={{ uri: img }} style={styles.thumbImg} />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+              removeClippedSubviews={true}
+              initialNumToRender={5}
+              maxToRenderPerBatch={3}
+              windowSize={5}
+            />
           </>
         )}
       </View>
@@ -457,7 +531,7 @@ export default function DetalhesScreen({ route, navigation }) {
       <View style={styles.descricaoBox}>
         <Text style={styles.descTitulo}>Descrição</Text>
         <Text style={styles.descTxt}>
-          Produto novo, de alta qualidade. Envio imediato! Qualquer dúvida é só chamar no WhatsApp.
+          {item.descricao || "Produto de alta qualidade. Envio imediato! Qualquer dúvida é só chamar no WhatsApp."}
         </Text>
       </View>
 
@@ -466,6 +540,16 @@ export default function DetalhesScreen({ route, navigation }) {
       )}
     </>
   );
+
+  // ✅ Loading screen durante transição de produto
+  if (isProductLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#ff4081" />
+        <Text style={styles.loadingProductText}>Carregando produto...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -746,5 +830,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "bold",
     marginLeft: 4,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+
+  loadingProductText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "600",
   },
 });
